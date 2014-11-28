@@ -240,6 +240,7 @@ void TLC5940_ClockInDC(void);
 static inline void TLC5940_SetGS(uint8_t row, channel_t channel, uint16_t value) __attribute__(( always_inline ));
 static inline void TLC5940_SetGS(uint8_t row, channel_t channel, uint16_t value) {
 #else // TLC5940_INLINE_SETGS_FUNCS
+static        void TLC5940_SetGS(uint8_t row, channel_t channel, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_SetGS(uint8_t row, channel_t channel, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
   channel = numChannels - 1 - channel;
@@ -261,6 +262,7 @@ static        void TLC5940_SetGS(uint8_t row, channel_t channel, uint16_t value)
 static inline void TLC5940_SetGS(channel_t channel, uint16_t value) __attribute__(( always_inline ));
 static inline void TLC5940_SetGS(channel_t channel, uint16_t value) {
 #else // TLC5940_INLINE_SETGS_FUNCS
+static        void TLC5940_SetGS(channel_t channel, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_SetGS(channel_t channel, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
   channel = numChannels - 1 - channel;
@@ -284,6 +286,7 @@ static        void TLC5940_SetGS(channel_t channel, uint16_t value) {
 static inline void TLC5940_SetAllGS(uint8_t row, uint16_t value) __attribute__(( always_inline ));
 static inline void TLC5940_SetAllGS(uint8_t row, uint16_t value) {
 #else // TLC5940_INLINE_SETGS_FUNCS
+static        void TLC5940_SetAllGS(uint8_t row, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_SetAllGS(uint8_t row, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
   uint8_t tmp1 = (value >> 4);
@@ -302,6 +305,7 @@ static        void TLC5940_SetAllGS(uint8_t row, uint16_t value) {
 static inline void TLC5940_SetAllGS(uint16_t value) __attribute__(( always_inline ));
 static inline void TLC5940_SetAllGS(uint16_t value) {
 #else // TLC5940_INLINE_SETGS_FUNCS
+static        void TLC5940_SetAllGS(uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_SetAllGS(uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
   uint8_t tmp1 = (value >> 4);
@@ -325,6 +329,7 @@ static        void TLC5940_SetAllGS(uint16_t value) {
 static inline void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value) __attribute__(( always_inline ));
 static inline void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value) {
 #else // TLC5940_INLINE_SETGS_FUNCS
+static        void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
   channel = numChannels - 1 - (channel * 4) - 3;
@@ -348,6 +353,7 @@ static        void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value
 static inline void TLC5940_Set4GS(channel_t channel, uint16_t value) __attribute__(( always_inline ));
 static inline void TLC5940_Set4GS(channel_t channel, uint16_t value) {
 #else // TLC5940_INLINE_SETGS_FUNCS
+static        void TLC5940_Set4GS(channel_t channel, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_Set4GS(channel_t channel, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
   channel = numChannels - 1 - (channel * 4) - 3;

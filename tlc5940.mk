@@ -54,11 +54,12 @@ TLC5940_INCLUDE_DEFAULT_ISR = 1
 TLC5940_INCLUDE_GAMMA_CORRECT = 0
 
 # Flag for forced inlining of the SetGS, SetAllGS, and Set4GS functions.
-#  0 = Do not force inline the calls to Set*GS family of functions.
+#  0 = Force all calls to the Set*GS family of functions to be actual
+#      function calls.  This option when used with the -O3 COMPILE
+#      option results in smaller code than using -Os.
 #  1 = Force all calls to the Set*GS family of functions to be inlined. Use this
 #      option if execution speed is critical, possibly at the expense of program
-#      size, although I have found that forcing these calls to be inlined often
-#      results in both smaller and faster code.
+#      size.
 TLC5940_INLINE_SETGS_FUNCS = 1
 
 # Flag to enable multiplexing. This can be used to drive both common cathode
