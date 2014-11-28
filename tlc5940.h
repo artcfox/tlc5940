@@ -159,7 +159,7 @@ static inline bool TLC5940_GetGSUpdateFlag(void) {
 extern bool xlatNeedsPulse; // should never be directly read/written from user code
 #endif // TLC5940_USE_GPIOR0
 
-// TLC5940_SetXLATNeedsPulseFlag should never be called from user code, except when providing a non-default ISR
+// TLC5940_SetXLATNeedsPulseFlag should never be called from user code, except when implementing a non-default ISR
 static inline void TLC5940_SetXLATNeedsPulseFlag(void) __attribute__(( always_inline ));
 static inline void TLC5940_SetXLATNeedsPulseFlag(void) {
 #if (TLC5940_USE_GPIOR0)
@@ -168,7 +168,7 @@ static inline void TLC5940_SetXLATNeedsPulseFlag(void) {
   xlatNeedsPulse = true;
 #endif // TLC5940_USE_GPIOR0
 }
-// TLC5940_ClearXLATNeedsPulseFlag should never be called from user code, except when providing a non-default ISR
+// TLC5940_ClearXLATNeedsPulseFlag should never be called from user code, except when implementing a non-default ISR
 static inline void TLC5940_ClearXLATNeedsPulseFlag(void) __attribute__(( always_inline ));
 static inline void TLC5940_ClearXLATNeedsPulseFlag(void) {
 #if (TLC5940_USE_GPIOR0)
@@ -177,7 +177,7 @@ static inline void TLC5940_ClearXLATNeedsPulseFlag(void) {
   xlatNeedsPulse = false;
 #endif // TLC5940_USE_GPIOR0
 }
-// TLC5940_GetXLATNeedsPulseFlag() should never be called from user code, except when providing a non-default ISR
+// TLC5940_GetXLATNeedsPulseFlag() should never be called from user code, except when implementing a non-default ISR
 static inline bool TLC5940_GetXLATNeedsPulseFlag(void) __attribute__(( always_inline ));
 static inline bool TLC5940_GetXLATNeedsPulseFlag(void) {
 #if (TLC5940_USE_GPIOR0)
