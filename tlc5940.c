@@ -346,13 +346,16 @@ bool xlatNeedsPulse;
 ISR(TLC5940_TIMER_COMPA_vect) {
   static uint8_t *pFront = &gsData[0][0]; // read pointer
   static uint8_t row, cycle; // initialized to 0 by default
+  uint8_t tmp = toggleRows[row]; // grab value before turning off the LEDs
+
   setHigh(BLANK_PORT, BLANK_PIN);
   pulse(XLAT_PORT, XLAT_PIN);
-  MULTIPLEX_PIN = toggleRows[row]; // toggle two pins at once
-  if (++row == TLC5940_MULTIPLEX_N)
-    row = 0;
+  MULTIPLEX_PIN = tmp; // toggle two pins at once
   setLow(BLANK_PORT, BLANK_PIN);
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
+
+  if (++row == TLC5940_MULTIPLEX_N)
+    row = 0;
 
   // Only page-flip if an update is not already in progress
   if (TLC5940_GetGSUpdateFlag() && cycle == 0) {
@@ -360,9 +363,9 @@ ISR(TLC5940_TIMER_COMPA_vect) {
     pFront = pBack;
     pBack = tmp;
     TLC5940_ClearGSUpdateFlag();
-    __asm__ volatile ("" ::: "memory"); // ensure pBack gets re-read
     if (++cycle == TLC5940_MULTIPLEX_N)
       cycle = 0;
+    __asm__ volatile ("" ::: "memory"); // ensure pBack gets re-read
   } else if (cycle > 0) {
     if (++cycle == TLC5940_MULTIPLEX_N)
       cycle = 0;
