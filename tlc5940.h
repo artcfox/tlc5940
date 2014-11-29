@@ -42,15 +42,7 @@
 
 // These options are not configurable because they rely on specific hardware
 // features of the ATmega328P that are only available on specific pins.
-#if (TLC5940_SPI_MODE == 1)
-#define SIN_DDR DDRD
-#define SIN_PORT PORTD
-#define SIN_PIN PD1
-
-#define SCLK_DDR DDRD
-#define SCLK_PORT PORTD
-#define SCLK_PIN PD4
-#elif (TLC5940_SPI_MODE == 0) // TLC5940_SPI_MODE
+#if (TLC5940_SPI_MODE == 0)
 #define SIN_DDR DDRB
 #define SIN_PORT PORTB
 #define SIN_PIN PB3
@@ -62,7 +54,15 @@
 #define BLANK_DDR DDRB
 #define BLANK_PORT PORTB
 #define BLANK_PIN PB2
-#elif (TLC5940_SPI_MODE == 2) // TLC5940_SPI_MODE
+#elif (TLC5940_SPI_MODE == 1)
+#define SIN_DDR DDRD
+#define SIN_PORT PORTD
+#define SIN_PIN PD1
+
+#define SCLK_DDR DDRD
+#define SCLK_PORT PORTD
+#define SCLK_PIN PD4
+#elif (TLC5940_SPI_MODE == 2)
 #define SIN_DDR DDRB
 #define SIN_PORT PORTB
 #define SIN_PIN PB1
@@ -156,7 +156,7 @@ static inline bool TLC5940_GetGSUpdateFlag(void) {
 
 #if (TLC5940_ENABLE_MULTIPLEXING == 0)
 #if (TLC5940_USE_GPIOR0 == 0)
-extern bool xlatNeedsPulse; // should never be directly read/written from user code
+extern bool xlatNeedsPulse; // should never be directly read/written from user code, ever
 #endif // TLC5940_USE_GPIOR0
 
 // TLC5940_SetXLATNeedsPulseFlag should never be called from user code, except when implementing a non-default ISR
@@ -193,17 +193,17 @@ extern const uint16_t TLC5940_GammaCorrect[] PROGMEM;
 #endif // TLC5940_INCLUDE_GAMMA_CORRECT
 
 // Define a macro for SPI Transmit
-#if (TLC5940_SPI_MODE == 1)
-#define TLC5940_TX(data) do {                                 \
-                           while (!(UCSR0A & (1 << UDRE0)));  \
-                           UDR0 = (data);                     \
-                         } while (0)
-#elif (TLC5940_SPI_MODE == 0) // TLC5940_SPI_MODE
+#if (TLC5940_SPI_MODE == 0)
 #define TLC5940_TX(data) do {                              \
                            SPDR = (data);                  \
                            while (!(SPSR & (1 << SPIF)));  \
                          } while (0)
-#elif (TLC5940_SPI_MODE == 2) // TLC5940_SPI_MODE
+#elif (TLC5940_SPI_MODE == 1)
+#define TLC5940_TX(data) do {                                 \
+                           while (!(UCSR0A & (1 << UDRE0)));  \
+                           UDR0 = (data);                     \
+                         } while (0)
+#elif (TLC5940_SPI_MODE == 2)
 #define TLC5940_TX(data) \
 do {                                                                         \
   USIDR = (data);                                                            \
@@ -280,6 +280,9 @@ static        void TLC5940_SetAllDC(uint8_t value) {
 }
 
 #if (TLC5940_INCLUDE_SET4_FUNCS)
+// Assumes that outputs 0-3, 4-7, 8-11, 12-15 of the TLC5940 have
+// been connected together to sink more current. For a single
+// TLC5940, the parameter 'channel' should be in the range 0-3
 #if (TLC5940_INLINE_SETDC_FUNCS)
 static inline void TLC5940_Set4DC(channel_t channel, uint8_t value) __attribute__(( always_inline ));
 static inline void TLC5940_Set4DC(channel_t channel, uint8_t value) {
@@ -287,9 +290,6 @@ static inline void TLC5940_Set4DC(channel_t channel, uint8_t value) {
 static        void TLC5940_Set4DC(channel_t channel, uint8_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_Set4DC(channel_t channel, uint8_t value) {
 #endif // TLC5940_INLINE_SETDC_FUNCS
-  // Assumes that outputs 0-3, 4-7, 8-11, 12-15 of the TLC5940 have
-  // been connected together to sink more current. For a single
-  // TLC5940, the parameter 'channel' should be in the range 0-3
   channel = numChannels - 1 - (channel * 4) - 3;
   channel_t i = (channel3_t)channel * 3 / 4;
 
@@ -395,10 +395,10 @@ static        void TLC5940_SetAllGS(uint16_t value) {
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
 #if (TLC5940_INCLUDE_SET4_FUNCS)
-#if (TLC5940_ENABLE_MULTIPLEXING)
 // Assumes that outputs 0-3, 4-7, 8-11, 12-15 of the TLC5940 have
 // been connected together to sink more current. For a single
 // TLC5940, the parameter 'channel' should be in the range 0-3
+#if (TLC5940_ENABLE_MULTIPLEXING)
 #if (TLC5940_INLINE_SETGS_FUNCS)
 static inline void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value) __attribute__(( always_inline ));
 static inline void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value) {
@@ -420,9 +420,6 @@ static        void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value
   *(pBack + offset) = (uint8_t)value;      // bits: 07 06 05 04 03 02 01 00
 }
 #else // TLC5940_ENABLE_MULTIPLEXING
-// Assumes that outputs 0-3, 4-7, 8-11, 12-15 of the TLC5940 have
-// been connected together to sink more current. For a single
-// TLC5940, the parameter 'channel' should be in the range 0-3
 #if (TLC5940_INLINE_SETGS_FUNCS)
 static inline void TLC5940_Set4GS(channel_t channel, uint16_t value) __attribute__(( always_inline ));
 static inline void TLC5940_Set4GS(channel_t channel, uint16_t value) {

@@ -160,10 +160,10 @@ void TLC5940_ClockInGS(void) {
   // worry about having to pulse SCLK one extra time in those cases.
 
 #if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
-  uint8_t firstCycleFlag = 0;
+  bool firstCycleFlag = false;
   if (getValue(VPRG_PORT, VPRG_PIN)) {
     setLow(VPRG_PORT, VPRG_PIN);
-    firstCycleFlag = 1;
+    firstCycleFlag = true;
   }
 #endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
 
@@ -171,11 +171,11 @@ void TLC5940_ClockInGS(void) {
   // from the previous call to TLC5940_Init), but the TLC5940's
   // grayscale registers will contain garbage right after powering on
   // so by keeping BLANK high, we will prevent that garbage from being
-  // displayed, and then we will clock in all zeros to prevent that
+  // displayed, and then we will clock in all zeroes to prevent that
   // garbage from ever being displayed.
 
   for (gsData_t i = 0; i < gsDataSize; i++)
-    TLC5940_TX(0x00); // clock in zeros, since this data will be latched now
+    TLC5940_TX(0x00); // clock in zeroes, since this data will be latched now
 
 #if (TLC5940_SPI_MODE == 1)
   _delay_loop_1(12); // delay until double-buffered TX register is clear
@@ -188,7 +188,15 @@ void TLC5940_ClockInGS(void) {
 #if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
   if (firstCycleFlag) {
 #endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
-#if (TLC5940_SPI_MODE == 1)
+
+#if (TLC5940_SPI_MODE == 0)
+    SPCR = SPSR = 0;
+
+    setHigh(SCLK_PORT, SCLK_PIN);
+
+    SPCR = (1 << SPE) | (1 << MSTR);
+    SPSR = (1 << SPI2X);
+#elif (TLC5940_SPI_MODE == 1)
 
     // According to the ATmega328P datasheet, we should only have to
     // disable the transmitter in order to manually pulse the XCK pin,
@@ -215,14 +223,7 @@ void TLC5940_ClockInGS(void) {
     UCSR0B = (1 << TXEN0);
     // Set baud rate. Must be set _after_ enabling the transmitter.
     UBRR0 = 0;
-#elif (TLC5940_SPI_MODE == 0) // TLC5940_SPI_MODE
-    SPCR = SPSR = 0;
-
-    setHigh(SCLK_PORT, SCLK_PIN);
-
-    SPCR = (1 << SPE) | (1 << MSTR);
-    SPSR = (1 << SPI2X);
-#elif (TLC5940_SPI_MODE == 2) // TCL5940_SPI_MODE
+#elif (TLC5940_SPI_MODE == 2)
     pulse(SCLK_PORT, SCLK_PIN);
 #endif // TLC5940_SPI_MODE
 #if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
@@ -265,17 +266,17 @@ void TLC5940_Init(void) {
   TLC5940_ClearXLATNeedsPulseFlag();
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
-#if (TLC5940_SPI_MODE == 1)
+#if (TLC5940_SPI_MODE == 0)
+  // Enable SPI, Master, set clock rate fck/2
+  SPCR = (1 << SPE) | (1 << MSTR);
+  SPSR = (1 << SPI2X);
+#elif (TLC5940_SPI_MODE == 1)
   // Set USART to Master SPI mode.
   UCSR0C = (1 << UMSEL01) | (1 << UMSEL00);
   // Enable TX only
   UCSR0B = (1 << TXEN0);
   // Set baud rate. Must be set _after_ enabling the transmitter.
   UBRR0 = 0;
-#elif (TLC5940_SPI_MODE == 0) // TLC5940_SPI_MODE
-  // Enable SPI, Master, set clock rate fck/2
-  SPCR = (1 << SPE) | (1 << MSTR);
-  SPSR = (1 << SPI2X);
 #endif // TLC5940_SPI_MODE
 
 #if (TLC5940_ISR_CTC_TIMER == 0)
