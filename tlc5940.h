@@ -227,10 +227,84 @@ do {                                                                         \
 
 extern uint8_t dcData[dcDataSize];
 
-void TLC5940_SetDC(channel_t channel, uint8_t value);
-void TLC5940_SetAllDC(uint8_t value);
+#if (TLC5940_INLINE_SETDC_FUNCS)
+static inline void TLC5940_SetDC(channel_t channel, uint8_t value) __attribute__(( always_inline ));
+static inline void TLC5940_SetDC(channel_t channel, uint8_t value) {
+#else // TLC5940_INLINE_SETDC_FUNCS
+static        void TLC5940_SetDC(channel_t channel, uint8_t value) __attribute__(( noinline, unused ));
+static        void TLC5940_SetDC(channel_t channel, uint8_t value) {
+#endif // TLC5940_INLINE_SETDC_FUNCS
+  channel = numChannels - 1 - channel;
+  channel_t i = (channel3_t)channel * 3 / 4;
+
+  switch (channel % 4) {
+  case 0:
+    dcData[i] = (dcData[i] & 0x03) | (uint8_t)(value << 2);
+    break;
+  case 1:
+    dcData[i] = (dcData[i] & 0xFC) | (value >> 4);
+    i++;
+    dcData[i] = (dcData[i] & 0x0F) | (uint8_t)(value << 4);
+    break;
+  case 2:
+    dcData[i] = (dcData[i] & 0xF0) | (value >> 2);
+    i++;
+    dcData[i] = (dcData[i] & 0x3F) | (uint8_t)(value << 6);
+    break;
+  default: // case 3:
+    dcData[i] = (dcData[i] & 0xC0) | (value);
+    break;
+  }
+}
+
+#if (TLC5940_INLINE_SETDC_FUNCS)
+static inline void TLC5940_SetAllDC(uint8_t value) __attribute__(( always_inline ));
+static inline void TLC5940_SetAllDC(uint8_t value) {
+#else // TLC5940_INLINE_SETDC_FUNCS
+static        void TLC5940_SetAllDC(uint8_t value) __attribute__(( noinline, unused ));
+static        void TLC5940_SetAllDC(uint8_t value) {
+#endif // TLC5940_INLINE_SETDC_FUNCS
+  uint8_t tmp1 = (uint8_t)(value << 2);
+  uint8_t tmp2 = (uint8_t)(tmp1 << 2);
+  uint8_t tmp3 = (uint8_t)(tmp2 << 2);
+  tmp1 |= (value >> 4);
+  tmp2 |= (value >> 2);
+  tmp3 |= value;
+
+  dcData_t i = 0;
+  do {
+    dcData[i++] = tmp1;              // bits: 05 04 03 02 01 00 05 04
+    dcData[i++] = tmp2;              // bits: 03 02 01 00 05 04 03 02
+    dcData[i++] = tmp3;              // bits: 01 00 05 04 03 02 01 00
+  } while (i < dcDataSize);
+}
+
 #if (TLC5940_INCLUDE_SET4_FUNCS)
-void TLC5940_Set4DC(channel_t channel, uint8_t value);
+#if (TLC5940_INLINE_SETDC_FUNCS)
+static inline void TLC5940_Set4DC(channel_t channel, uint8_t value) __attribute__(( always_inline ));
+static inline void TLC5940_Set4DC(channel_t channel, uint8_t value) {
+#else // TLC5940_INLINE_SETDC_FUNCS
+static        void TLC5940_Set4DC(channel_t channel, uint8_t value) __attribute__(( noinline, unused ));
+static        void TLC5940_Set4DC(channel_t channel, uint8_t value) {
+#endif // TLC5940_INLINE_SETDC_FUNCS
+  // Assumes that outputs 0-3, 4-7, 8-11, 12-15 of the TLC5940 have
+  // been connected together to sink more current. For a single
+  // TLC5940, the parameter 'channel' should be in the range 0-3
+  channel = numChannels - 1 - (channel * 4) - 3;
+  channel_t i = (channel3_t)channel * 3 / 4;
+
+  uint8_t tmp1 = (uint8_t)(value << 2);
+  uint8_t tmp2 = (uint8_t)(tmp1 << 2);
+  uint8_t tmp3 = (uint8_t)(tmp2 << 2);
+  tmp1 |= (value >> 4);
+  tmp2 |= (value >> 2);
+  tmp3 |= value;
+
+  dcData[i++] = tmp1;              // bits: 05 04 03 02 01 00 05 04
+  dcData[i++] = tmp2;              // bits: 03 02 01 00 05 04 03 02
+  dcData[i] = tmp3;                // bits: 01 00 05 04 03 02 01 00
+}
+
 #endif // TLC5940_INCLUDE_SET4_FUNCS
 void TLC5940_ClockInDC(void);
 #endif // TLC5940_INCLUDE_DC_FUNCS

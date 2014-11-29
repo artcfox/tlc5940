@@ -3,7 +3,7 @@
 # Defines the number of TLC5940 chips that are connected in series
 TLC5940_N = 1
 
-# Flag for including functions for manually setting the dot correction
+# Flag for including variables/functions for manually setting the dot correction
 #  0 = Do not include dot correction features (generates smaller code)
 #  1 = Include dot correction features (will still read from EEPROM by default)
 TLC5940_INCLUDE_DC_FUNCS = 0
@@ -52,6 +52,15 @@ TLC5940_INCLUDE_DEFAULT_ISR = 1
 #  0 = Do not store a gamma correction table in flash memory
 #  1 = Stores a gamma correction table in flash memory
 TLC5940_INCLUDE_GAMMA_CORRECT = 0
+
+# Flag for forced inlining of the SetDC, SetAllDC, and Set4DC functions.
+#  0 = Force all calls to the Set*DC family of functions to be actual
+#      function calls.  This option when used with the -O3 COMPILE
+#      option results in smaller code than using -Os.
+#  1 = Force all calls to the Set*DC family of functions to be inlined. Use this
+#      option if execution speed is critical, possibly at the expense of program
+#      size.
+TLC5940_INLINE_SETDC_FUNCS = 1
 
 # Flag for forced inlining of the SetGS, SetAllGS, and Set4GS functions.
 #  0 = Force all calls to the Set*GS family of functions to be actual
@@ -256,6 +265,7 @@ TLC5940_DEFINES = -DTLC5940_N=$(TLC5940_N) \
                   -DTLC5940_INCLUDE_SET4_FUNCS=$(TLC5940_INCLUDE_SET4_FUNCS) \
                   -DTLC5940_INCLUDE_DEFAULT_ISR=$(TLC5940_INCLUDE_DEFAULT_ISR) \
                   -DTLC5940_INCLUDE_GAMMA_CORRECT=$(TLC5940_INCLUDE_GAMMA_CORRECT) \
+                  -DTLC5940_INLINE_SETDC_FUNCS=$(TLC5940_INLINE_SETDC_FUNCS) \
                   -DTLC5940_INLINE_SETGS_FUNCS=$(TLC5940_INLINE_SETGS_FUNCS) \
                   -DTLC5940_ENABLE_MULTIPLEXING=$(TLC5940_ENABLE_MULTIPLEXING) \
                   $(MULTIPLEXING_DEFINES) \

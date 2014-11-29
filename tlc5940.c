@@ -140,67 +140,6 @@ const uint16_t TLC5940_GammaCorrect[] PROGMEM = {
 #if (TLC5940_INCLUDE_DC_FUNCS)
 uint8_t dcData[dcDataSize];
 
-void TLC5940_SetDC(channel_t channel, uint8_t value) {
-  channel = numChannels - 1 - channel;
-  channel_t i = (channel3_t)channel * 3 / 4;
-
-  switch (channel % 4) {
-  case 0:
-    dcData[i] = (dcData[i] & 0x03) | (uint8_t)(value << 2);
-    break;
-  case 1:
-    dcData[i] = (dcData[i] & 0xFC) | (value >> 4);
-    i++;
-    dcData[i] = (dcData[i] & 0x0F) | (uint8_t)(value << 4);
-    break;
-  case 2:
-    dcData[i] = (dcData[i] & 0xF0) | (value >> 2);
-    i++;
-    dcData[i] = (dcData[i] & 0x3F) | (uint8_t)(value << 6);
-    break;
-  default: // case 3:
-    dcData[i] = (dcData[i] & 0xC0) | (value);
-    break;
-  }
-}
-
-void TLC5940_SetAllDC(uint8_t value) {
-  uint8_t tmp1 = (uint8_t)(value << 2);
-  uint8_t tmp2 = (uint8_t)(tmp1 << 2);
-  uint8_t tmp3 = (uint8_t)(tmp2 << 2);
-  tmp1 |= (value >> 4);
-  tmp2 |= (value >> 2);
-  tmp3 |= value;
-
-  dcData_t i = 0;
-  do {
-    dcData[i++] = tmp1;              // bits: 05 04 03 02 01 00 05 04
-    dcData[i++] = tmp2;              // bits: 03 02 01 00 05 04 03 02
-    dcData[i++] = tmp3;              // bits: 01 00 05 04 03 02 01 00
-  } while (i < dcDataSize);
-}
-
-#if (TLC5940_INCLUDE_SET4_FUNCS)
-// Assumes that outputs 0-3, 4-7, 8-11, 12-15 of the TLC5940 have
-// been connected together to sink more current. For a single
-// TLC5940, the parameter 'channel' should be in the range 0-3
-void TLC5940_Set4DC(channel_t channel, uint8_t value) {
-  channel = numChannels - 1 - (channel * 4) - 3;
-  channel_t i = (channel3_t)channel * 3 / 4;
-
-  uint8_t tmp1 = (uint8_t)(value << 2);
-  uint8_t tmp2 = (uint8_t)(tmp1 << 2);
-  uint8_t tmp3 = (uint8_t)(tmp2 << 2);
-  tmp1 |= (value >> 4);
-  tmp2 |= (value >> 2);
-  tmp3 |= value;
-
-  dcData[i++] = tmp1;              // bits: 05 04 03 02 01 00 05 04
-  dcData[i++] = tmp2;              // bits: 03 02 01 00 05 04 03 02
-  dcData[i] = tmp3;                // bits: 01 00 05 04 03 02 01 00
-}
-#endif // TLC5940_INCLUDE_SET4_FUNCS
-
 void TLC5940_ClockInDC(void) {
   setHigh(DCPRG_PORT, DCPRG_PIN);
   setHigh(VPRG_PORT, VPRG_PIN);
@@ -208,8 +147,7 @@ void TLC5940_ClockInDC(void) {
     TLC5940_TX(dcData[i]);
 
 #if (TLC5940_SPI_MODE == 1)
-  // Since the TLC5940_TX may be double-buffered, wait until all the data has been sent
-  _delay_loop_1(12);
+  _delay_loop_1(12); // delay until double-buffered TX register is clear
 #endif // TLC5940_SPI_MODE
 
   pulse(XLAT_PORT, XLAT_PIN);
@@ -237,11 +175,10 @@ void TLC5940_ClockInGS(void) {
   // garbage from ever being displayed.
 
   for (gsData_t i = 0; i < gsDataSize; i++)
-    TLC5940_TX(0x00); // Clock in all zeros, since this data will be latched now
+    TLC5940_TX(0x00); // clock in zeros, since this data will be latched now
 
 #if (TLC5940_SPI_MODE == 1)
-  // Since the TLC5940_TX may be double-buffered, wait until all the data has been sent
-  _delay_loop_1(12);
+  _delay_loop_1(12); // delay until double-buffered TX register is clear
 #endif // TLC5940_SPI_MODE
 
   // If we hadn't skipped setting BLANK low above, this is where we
@@ -252,18 +189,21 @@ void TLC5940_ClockInGS(void) {
   if (firstCycleFlag) {
 #endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
 #if (TLC5940_SPI_MODE == 1)
-    // According to the ATmega328P datasheet, we should only have to disable the
-    // transmitter in order to manually pulse the XCK pin, however my logic
-    // analyzer disagrees.
+
+    // According to the ATmega328P datasheet, we should only have to
+    // disable the transmitter in order to manually pulse the XCK pin,
+    // however my logic analyzer disagrees.
 
     // Disable the USART Master SPI Mode, and Transmitter completely
     UCSR0C = UCSR0B = 0;
 
-    // Only now can we manually pulse our XCK pin to provide an extra pulse on SCLK
-    // To ensure we only get a single pulse (rather than a double pulse)
-    // we only call setHigh(), rather than pulse() because re-enabling the USART as
-    // SPI master below will force the XCK pin back low, but sometimes it will briefly
-    // be set high first, which would result in a double pulse.
+    // Only now can we manually pulse our XCK pin to provide an extra
+    // pulse on SCLK. To ensure we only get a single pulse (rather than
+    // a double pulse) we only call setHigh(), rather than pulse()
+    // because re-enabling the USART as SPI master below will force
+    // the XCK pin back low, but sometimes it will briefly be set high
+    // first, which would result in a double pulse.
+
     setHigh(SCLK_PORT, SCLK_PIN);
 
     // Baud rate must be set to 0 prior to enabling the USART as SPI
@@ -307,7 +247,7 @@ void TLC5940_Init(void) {
   setOutput(XLAT_DDR, XLAT_PIN);
   setLow(XLAT_PORT, XLAT_PIN);
 
-  // Call setHigh() before setOutput() to ensure BLANK never goes low on startup, even briefly
+  // setHigh called first to ensure BLANK doesn't briefly go low
   setHigh(BLANK_PORT, BLANK_PIN);
   setOutput(BLANK_DDR, BLANK_PIN);
 
