@@ -38,7 +38,7 @@
 #if (TLC5940_ENABLE_MULTIPLEXING)
 // In main(), set toggleRows to the two pins that should be toggled
 // to turn OFF the previous row's MOSFET, and ON the current row's MOSFET.
-uint8_t toggleRows[TLC5940_MULTIPLEX_N];
+uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N];
 uint8_t gsData[TLC5940_MULTIPLEX_N][gsDataSize];
 static uint8_t gsDataCache[TLC5940_MULTIPLEX_N][gsDataSize];
 uint8_t *pBack;
@@ -346,11 +346,14 @@ bool xlatNeedsPulse;
 ISR(TLC5940_TIMER_COMPA_vect) {
   static uint8_t *pFront = &gsData[0][0]; // read pointer
   static uint8_t row, cycle; // initialized to 0 by default
-  uint8_t tmp = toggleRows[row]; // grab value before turning off the LEDs
+  uint8_t *p = toggleRows + row; // forces efficient use of the Z-pointer
+  uint8_t tmp1 = *p;
+  uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
   setHigh(BLANK_PORT, BLANK_PIN);
   pulse(XLAT_PORT, XLAT_PIN);
-  MULTIPLEX_PIN = tmp; // toggle two pins at once
+  MULTIPLEX_PIN = tmp1; // turn off the previous row
+  MULTIPLEX_PIN = tmp2; // turn on the next row
   setLow(BLANK_PORT, BLANK_PIN);
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 
