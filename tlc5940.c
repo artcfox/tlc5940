@@ -270,11 +270,6 @@ void TLC5940_ClockInGS(void) {
 }
 
 void TLC5940_Init(void) {
-#if (TLC5940_SPI_MODE == 1)
-  // Baud rate must be set to 0 prior to enabling the USART as SPI
-  // master, to ensure proper initialization of the XCK line.
-  UBRR0 = 0;
-#endif // TLC5940_SPI_MODE
   setOutput(SCLK_DDR, SCLK_PIN);
   setLow(SCLK_PORT, SCLK_PIN);
 #if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
@@ -296,6 +291,7 @@ void TLC5940_Init(void) {
 #endif // TLC5940_SPI_MODE
 
   TLC5940_ClearGSUpdateFlag();
+  TLC5940_ClearXLATNeedsPulseFlag();
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
   // Set multiplex pins as outputs, and turn all multiplexing MOSFETs off
@@ -332,8 +328,6 @@ void TLC5940_Init(void) {
 
   // Initialize the write pointer for page-flipping
   pBack = &gsDataCache[0][0];
-#else // TLC5940_ENABLE_MULTIPLEXING
-  TLC5940_ClearXLATNeedsPulseFlag();
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
 #if (TLC5940_SPI_MODE == 0)
@@ -341,6 +335,9 @@ void TLC5940_Init(void) {
   SPCR = (1 << SPE) | (1 << MSTR);
   SPSR = (1 << SPI2X);
 #elif (TLC5940_SPI_MODE == 1)
+  // Baud rate must be set to 0 prior to enabling the USART as SPI
+  // master, to ensure proper initialization of the XCK line.
+  UBRR0 = 0;
   // Set USART to Master SPI mode.
   UCSR0C = (1 << UMSEL01) | (1 << UMSEL00);
   // Enable TX only
@@ -411,9 +408,10 @@ bool xlatNeedsPulse;
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
 #if (TLC5940_INCLUDE_DEFAULT_ISR)
-#if (TLC5940_ENABLE_MULTIPLEXING)
 // This interrupt will get called every 2^TLC5940_PWM_BITS clock cycles
 ISR(TLC5940_TIMER_COMPA_vect) {
+#if (TLC5940_ENABLE_MULTIPLEXING)
+
   static uint8_t *pFront = &gsData[0][0]; // read pointer
   static uint8_t row, cycle; // initialized to 0 by default
   const uint8_t *p = toggleRows + row; // forces efficient use of the Z-pointer
@@ -421,14 +419,15 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
   setHigh(BLANK_PORT, BLANK_PIN);
-  pulse(XLAT_PORT, XLAT_PIN);
-  MULTIPLEX_PIN = tmp1; // turn off the previous row
-  MULTIPLEX_PIN = tmp2; // turn on the next row
+  if (TLC5940_GetXLATNeedsPulseFlag()) {
+    pulse(XLAT_PORT, XLAT_PIN);
+    MULTIPLEX_PIN = tmp2; // turn off the previous row
+    MULTIPLEX_PIN = tmp1; // turn on the next row
+    if (++row == TLC5940_MULTIPLEX_N)
+      row = 0;
+  }
   setLow(BLANK_PORT, BLANK_PIN);
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
-
-  if (++row == TLC5940_MULTIPLEX_N)
-    row = 0;
 
   // Only page-flip if an update is not already in progress
   if (TLC5940_GetGSUpdateFlag() && cycle == 0) {
@@ -448,10 +447,11 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   gsData_t i = gsDataSize + 1;
   while (--i) // loop over gsData[row][i] or gsDataCache[row][i]
     TLC5940_TX(*(pFront + offset++));
-}
+
+  TLC5940_SetXLATNeedsPulseFlag();
+
 #else // TLC5940_ENABLE_MULTIPLEXING
-// This interrupt will get called every 2^TLC5940_PWM_BITS clock cycles
-ISR(TLC5940_TIMER_COMPA_vect) {
+
   setHigh(BLANK_PORT, BLANK_PIN);
   if (TLC5940_GetXLATNeedsPulseFlag()) {
     TLC5940_ClearXLATNeedsPulseFlag();
@@ -466,6 +466,7 @@ ISR(TLC5940_TIMER_COMPA_vect) {
     TLC5940_SetXLATNeedsPulseFlag();
     TLC5940_ClearGSUpdateFlag();
   }
-}
+
 #endif // TLC5940_ENABLE_MULTIPLEXING
+}
 #endif // TLC5940_INCLUDE_DEFAULT_ISR

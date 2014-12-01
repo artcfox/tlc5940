@@ -154,7 +154,6 @@ static inline bool TLC5940_GetGSUpdateFlag(void) {
 #endif // TLC5940_USE_GPIOR0
 }
 
-#if (TLC5940_ENABLE_MULTIPLEXING == 0)
 #if (TLC5940_USE_GPIOR0 == 0)
 extern bool xlatNeedsPulse; // should never be directly read/written from user code, ever
 #endif // TLC5940_USE_GPIOR0
@@ -186,7 +185,6 @@ static inline bool TLC5940_GetXLATNeedsPulseFlag(void) {
   return xlatNeedsPulse;
 #endif // TLC5940_USE_GPIOR0
 }
-#endif // TLC5940_ENABLE_MULTIPLEXING
 
 #if (TLC5940_INCLUDE_GAMMA_CORRECT)
 extern const uint16_t TLC5940_GammaCorrect[] PROGMEM;
