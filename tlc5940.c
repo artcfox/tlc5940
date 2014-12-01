@@ -36,9 +36,42 @@
 #include "tlc5940.h"
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
-// In main(), set toggleRows to the two pins that should be toggled
-// to turn OFF the previous row's MOSFET, and ON the current row's MOSFET.
-uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N];
+const uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N] = {
+#if (TLC5940_MULTIPLEX_N == 1)
+  (1 << ROW0_PIN),
+  (1 << ROW0_PIN),
+#elif (TLC5940_MULTIPLEX_N == 2)
+  (1 << ROW0_PIN), (1 << ROW1_PIN),
+  (1 << ROW1_PIN), (1 << ROW0_PIN),
+#elif (TLC5940_MULTIPLEX_N == 3) 
+  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
+  (1 << ROW2_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN),
+#elif (TLC5940_MULTIPLEX_N == 4)
+  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
+  (1 << ROW3_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
+#elif (TLC5940_MULTIPLEX_N == 5)
+  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
+  (1 << ROW4_PIN),
+  (1 << ROW4_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
+  (1 << ROW3_PIN),
+#elif (TLC5940_MULTIPLEX_N == 6)
+  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
+  (1 << ROW4_PIN), (1 << ROW5_PIN),
+  (1 << ROW5_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
+  (1 << ROW3_PIN), (1 << ROW4_PIN),
+#elif (TLC5940_MULTIPLEX_N == 7)
+  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
+  (1 << ROW4_PIN), (1 << ROW5_PIN), (1 << ROW6_PIN),
+  (1 << ROW6_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
+  (1 << ROW3_PIN), (1 << ROW4_PIN), (1 << ROW5_PIN),
+#elif (TLC5940_MULTIPLEX_N == 8)
+  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
+  (1 << ROW4_PIN), (1 << ROW5_PIN), (1 << ROW6_PIN), (1 << ROW7_PIN),
+  (1 << ROW7_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
+  (1 << ROW3_PIN), (1 << ROW4_PIN), (1 << ROW5_PIN), (1 << ROW6_PIN),
+#endif // TLC5940_ENABLE_MULTIPLEXING
+}; // const toggleRows[2 * TLC5940_MULTIPLEX_N]
+
 uint8_t gsData[TLC5940_MULTIPLEX_N][gsDataSize];
 static uint8_t gsDataCache[TLC5940_MULTIPLEX_N][gsDataSize];
 uint8_t *pBack;
@@ -229,6 +262,11 @@ void TLC5940_ClockInGS(void) {
 #if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
   }
 #endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
+
+#if (TLC5940_ENABLE_MULTIPLEXING)
+  // Turn on the last multiplexing MOSFET (so the toggle function works)
+  MULTIPLEX_PIN = toggleRows[TLC5940_MULTIPLEX_N];
+#endif // TLC5940_ENABLE_MULTIPLEXING
 }
 
 void TLC5940_Init(void) {
@@ -260,6 +298,38 @@ void TLC5940_Init(void) {
   TLC5940_ClearGSUpdateFlag();
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
+  // Set multiplex pins as outputs, and turn all multiplexing MOSFETs off
+  setHigh(MULTIPLEX_PORT, ROW0_PIN);
+  setOutput(MULTIPLEX_DDR, ROW0_PIN);
+#if (TLC5940_MULTIPLEX_N > 1)
+  setHigh(MULTIPLEX_PORT, ROW1_PIN);
+  setOutput(MULTIPLEX_DDR, ROW1_PIN);
+#endif // TLC5940_MULTIPLEX_N
+#if (TLC5940_MULTIPLEX_N > 2)
+  setHigh(MULTIPLEX_PORT, ROW2_PIN);
+  setOutput(MULTIPLEX_DDR, ROW2_PIN);
+#endif // TLC5940_MULTIPLEX_N
+#if (TLC5940_MULTIPLEX_N > 3)
+  setHigh(MULTIPLEX_PORT, ROW3_PIN);
+  setOutput(MULTIPLEX_DDR, ROW3_PIN);
+#endif // TLC5940_MULTIPLEX_N
+#if (TLC5940_MULTIPLEX_N > 4)
+  setHigh(MULTIPLEX_PORT, ROW4_PIN);
+  setOutput(MULTIPLEX_DDR, ROW4_PIN);
+#endif // TLC5940_MULTIPLEX_N
+#if (TLC5940_MULTIPLEX_N > 5)
+  setHigh(MULTIPLEX_PORT, ROW5_PIN);
+  setOutput(MULTIPLEX_DDR, ROW5_PIN);
+#endif // TLC5940_MULTIPLEX_N
+#if (TLC5940_MULTIPLEX_N > 6)
+  setHigh(MULTIPLEX_PORT, ROW6_PIN);
+  setOutput(MULTIPLEX_DDR, ROW6_PIN);
+#endif // TLC5940_MULTIPLEX_N
+#if (TLC5940_MULTIPLEX_N > 7)
+  setHigh(MULTIPLEX_PORT, ROW7_PIN);
+  setOutput(MULTIPLEX_DDR, ROW7_PIN);
+#endif // TLC5940_MULTIPLEX_N
+
   // Initialize the write pointer for page-flipping
   pBack = &gsDataCache[0][0];
 #else // TLC5940_ENABLE_MULTIPLEXING
@@ -346,7 +416,7 @@ bool xlatNeedsPulse;
 ISR(TLC5940_TIMER_COMPA_vect) {
   static uint8_t *pFront = &gsData[0][0]; // read pointer
   static uint8_t row, cycle; // initialized to 0 by default
-  uint8_t *p = toggleRows + row; // forces efficient use of the Z-pointer
+  const uint8_t *p = toggleRows + row; // forces efficient use of the Z-pointer
   uint8_t tmp1 = *p;
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 

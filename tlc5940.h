@@ -111,7 +111,7 @@
 #define numChannels ((channel_t)16 * TLC5940_N)
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
-extern uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N];
+extern const uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N];
 extern uint8_t gsData[TLC5940_MULTIPLEX_N][gsDataSize];
 extern uint8_t *pBack;
 #else // TLC5940_ENABLE_MULTIPLEXING

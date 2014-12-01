@@ -71,24 +71,6 @@ TLC5940_INLINE_SETDC_FUNCS = 1
 #      size.
 TLC5940_INLINE_SETGS_FUNCS = 1
 
-# Flag to enable multiplexing. This can be used to drive both common cathode
-# (preferred), or common anode RGB LEDs, or even single-color LEDs. Use a
-# P-Channel MOSFET such as an IRF9520 for each row to be multiplexed.
-#  0 = Disable multiplexing; library functions as normal.
-#  1 = Enable multiplexing; The gsData array will become two-dimensional, and
-#      functions in the Set*GS family require another argument which corresponds
-#      to the multiplexed row they operate on.
-TLC5940_ENABLE_MULTIPLEXING = 0
-
-# The following option only applies if TLC5940_ENABLE_MULTIPLEXING = 1
-ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
-# Defines the number of rows to be multiplexed.
-# Note: Without writing a custom ISR, that can toggle pins from multiple PORT
-#       registers, the maximum number of rows that can be multiplexed is eight.
-#       This option is ignored if TLC5940_ENABLE_MULTIPLEXING = 0
-TLC5940_MULTIPLEX_N = 3
-endif
-
 # Setting to select among, Normal SPI Master mode, USART in MSPIM
 # mode, or USI mode to communicate with the TLC5940. One major
 # advantage of using the USART in MSPIM mode is that the transmit
@@ -141,22 +123,6 @@ TLC5940_PWM_BITS = 12
 #  2 = 8-bit Timer/Counter2
 TLC5940_ISR_CTC_TIMER = 0
 
-# Determines whether or not GPIOR0 is used to store flags. This special-purpose
-# register is designed to store bit flags, as it can set, clear or test a
-# single bit in only 2 clock cycles.
-#
-# Note: If enabled, you must make sure that the flag bits assigned below do not
-#       conflict with any other GPIOR0 flag bits your application might use.
-TLC5940_USE_GPIOR0 = 1
-
-# GPIOR0 flag bits used
-ifeq ($(TLC5940_USE_GPIOR0), 1)
-TLC5940_FLAG_GS_UPDATE = 0
-ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 0)
-TLC5940_FLAG_XLAT_NEEDS_PULSE = 1
-endif
-endif
-
 # BLANK is not configurable if the TLC5940 is using the normal SPI Master mode (TLC5940_SPI_MODE = 0),
 # but it is configurable when TLC5940_SPI_MODE = 1 or 2
 # WARNING: When TLC5940_SPI_MODE = 2, BLANK_PIN should be PB3 so the outputs are blanked during programming
@@ -203,8 +169,23 @@ XLAT_PORT = PORTB
 XLAT_PIN = PB0
 endif
 
+# Flag to enable multiplexing. This can be used to drive both common cathode
+# (preferred), or common anode RGB LEDs, or even single-color LEDs. Use a
+# P-Channel MOSFET such as an IRF9520 for each row to be multiplexed.
+#  0 = Disable multiplexing; library functions as normal.
+#  1 = Enable multiplexing; The gsData array will become two-dimensional, and
+#      functions in the Set*GS family require another argument which corresponds
+#      to the multiplexed row they operate on.
+TLC5940_ENABLE_MULTIPLEXING = 0
+
 # The following options only apply if TLC5940_ENABLE_MULTIPLEXING = 1
 ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
+# Defines the number of rows to be multiplexed.
+# Note: Without writing a custom ISR, that can toggle pins from multiple PORT
+#       registers, the maximum number of rows that can be multiplexed is eight.
+#       This option is ignored if TLC5940_ENABLE_MULTIPLEXING = 0
+TLC5940_MULTIPLEX_N = 3
+
 # DDR, PORT, and PIN registers used for driving the multiplexing IRF9520 MOSFETs
 # Note: All pins used for multiplexing must share the same DDR, PORT, and PIN
 #       registers. These options are ignored if TLC5940_ENABLE_MULTIPLEXING = 0
@@ -216,21 +197,48 @@ MULTIPLEX_PIN = PINC
 # MOSFETs. You can define up to eight unless you use a custom ISR that can
 # toggle PINs on multiple PORTs.
 # Note: All pins used for multiplexing must share the same DDR, PORT, and PIN
-#       registers. These options are ignored if TLC5940_ENABLE_MULTIPLEXING = 0
-# Also: If you add any pins here, do not forget to add those variables to the
-#       MULTIPLEXING_DEFINES flag below!
-R_PIN = PC0
-G_PIN = PC1
-B_PIN = PC2
+#       registers.
+# Don't worry, any pins defined beyond TLC5940_MULTIPLEX_N will be ignored.
+ROW0_PIN = PC0
+ROW1_PIN = PC1
+ROW2_PIN = PC2
+ROW3_PIN = PC3
+ROW4_PIN = PC4
+ROW5_PIN = PC5
+ROW6_PIN =
+ROW7_PIN =
+endif
+
+# Determines whether or not GPIOR0 is used to store flags. This special-purpose
+# register is designed to store bit flags, as it can set, clear or test a
+# single bit in only 2 clock cycles.
+#
+# Note: If enabled, you must make sure that the flag bits assigned below do not
+#       conflict with any other GPIOR0 flag bits your application might use.
+TLC5940_USE_GPIOR0 = 1
+
+# GPIOR0 flag bits used
+ifeq ($(TLC5940_USE_GPIOR0), 1)
+TLC5940_FLAG_GS_UPDATE = 0
+ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 0)
+TLC5940_FLAG_XLAT_NEEDS_PULSE = 1
+endif
+endif
 
 # This avoids adding needless defines if TLC5940_ENABLE_MULTIPLEXING = 0
+ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
 MULTIPLEXING_DEFINES = -DTLC5940_MULTIPLEX_N=$(TLC5940_MULTIPLEX_N) \
                        -DMULTIPLEX_DDR=$(MULTIPLEX_DDR) \
                        -DMULTIPLEX_PORT=$(MULTIPLEX_PORT) \
                        -DMULTIPLEX_PIN=$(MULTIPLEX_PIN) \
-                       -DR_PIN=$(R_PIN) \
-                       -DG_PIN=$(G_PIN) \
-                       -DB_PIN=$(B_PIN)
+                       -DROW0_PIN=$(ROW0_PIN) \
+                       -DROW1_PIN=$(ROW1_PIN) \
+                       -DROW2_PIN=$(ROW2_PIN) \
+                       -DROW3_PIN=$(ROW3_PIN) \
+                       -DROW4_PIN=$(ROW4_PIN) \
+                       -DROW5_PIN=$(ROW5_PIN) \
+                       -DROW6_PIN=$(ROW6_PIN) \
+                       -DROW7_PIN=$(ROW7_PIN)
 endif
 
 # This avoids a redefinition warning if TLC5940_SPI_MODE = 0
