@@ -36,39 +36,32 @@
 #include "tlc5940.h"
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
+// The toggleRows array now starts on the second to last channel
 const uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N] = {
 #if (TLC5940_MULTIPLEX_N == 1)
   (1 << ROW0_PIN),
   (1 << ROW0_PIN),
 #elif (TLC5940_MULTIPLEX_N == 2)
-  (1 << ROW0_PIN), (1 << ROW1_PIN),
   (1 << ROW1_PIN), (1 << ROW0_PIN),
+  (1 << ROW0_PIN), (1 << ROW1_PIN),
 #elif (TLC5940_MULTIPLEX_N == 3) 
-  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
   (1 << ROW2_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN),
-#elif (TLC5940_MULTIPLEX_N == 4)
-  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
+  (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW0_PIN),
+#elif (TLC5940_MULTIPLEX_N == 4) //
   (1 << ROW3_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
+  (1 << ROW2_PIN), (1 << ROW3_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN),
 #elif (TLC5940_MULTIPLEX_N == 5)
-  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
-  (1 << ROW4_PIN),
-  (1 << ROW4_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
-  (1 << ROW3_PIN),
+  (1 << ROW4_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
+  (1 << ROW3_PIN), (1 << ROW4_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
 #elif (TLC5940_MULTIPLEX_N == 6)
-  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
-  (1 << ROW4_PIN), (1 << ROW5_PIN),
-  (1 << ROW5_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
-  (1 << ROW3_PIN), (1 << ROW4_PIN),
+  (1 << ROW5_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN), (1 << ROW4_PIN),
+  (1 << ROW4_PIN), (1 << ROW5_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
 #elif (TLC5940_MULTIPLEX_N == 7)
-  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
-  (1 << ROW4_PIN), (1 << ROW5_PIN), (1 << ROW6_PIN),
-  (1 << ROW6_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
-  (1 << ROW3_PIN), (1 << ROW4_PIN), (1 << ROW5_PIN),
+  (1 << ROW6_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN), (1 << ROW4_PIN), (1 << ROW5_PIN),
+  (1 << ROW5_PIN), (1 << ROW6_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN), (1 << ROW4_PIN),
 #elif (TLC5940_MULTIPLEX_N == 8)
-  (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN),
-  (1 << ROW4_PIN), (1 << ROW5_PIN), (1 << ROW6_PIN), (1 << ROW7_PIN),
-  (1 << ROW7_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN),
-  (1 << ROW3_PIN), (1 << ROW4_PIN), (1 << ROW5_PIN), (1 << ROW6_PIN),
+  (1 << ROW7_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN), (1 << ROW4_PIN), (1 << ROW5_PIN), (1 << ROW6_PIN),
+  (1 << ROW6_PIN), (1 << ROW7_PIN), (1 << ROW0_PIN), (1 << ROW1_PIN), (1 << ROW2_PIN), (1 << ROW3_PIN), (1 << ROW4_PIN), (1 << ROW5_PIN),
 #endif // TLC5940_ENABLE_MULTIPLEXING
 }; // const toggleRows[2 * TLC5940_MULTIPLEX_N]
 
@@ -267,6 +260,10 @@ void TLC5940_ClockInGS(void) {
   // Turn on the last multiplexing MOSFET (so the toggle function works)
   MULTIPLEX_PIN = toggleRows[TLC5940_MULTIPLEX_N];
 #endif // TLC5940_ENABLE_MULTIPLEXING
+
+  // Shift in more zeroes, since the first thing the ISR does is pulse XLAT
+  for (gsData_t i = 0; i < gsDataSize; i++)
+    TLC5940_TX(0x00);
 }
 
 void TLC5940_Init(void) {
@@ -290,7 +287,7 @@ void TLC5940_Init(void) {
   setLow(SIN_PORT, SIN_PIN); // since USI only toggles, start in known state
 #endif // TLC5940_SPI_MODE
 
-  TLC5940_ClearGSUpdateFlag();
+  TLC5940_SetGSUpdateFlag();
   TLC5940_ClearXLATNeedsPulseFlag();
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
@@ -413,42 +410,43 @@ ISR(TLC5940_TIMER_COMPA_vect) {
 #if (TLC5940_ENABLE_MULTIPLEXING)
 
   static uint8_t *pFront = &gsData[0][0]; // read pointer
-  static uint8_t row, cycle; // initialized to 0 by default
+  static uint8_t row;//, cycle; // initialized to 0 by default
   const uint8_t *p = toggleRows + row; // forces efficient use of the Z-pointer
   uint8_t tmp1 = *p;
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
   setHigh(BLANK_PORT, BLANK_PIN);
-  if (TLC5940_GetXLATNeedsPulseFlag()) {
+  //  if (TLC5940_GetXLATNeedsPulseFlag()) {
     pulse(XLAT_PORT, XLAT_PIN);
     MULTIPLEX_PIN = tmp2; // turn off the previous row
     MULTIPLEX_PIN = tmp1; // turn on the next row
-    if (++row == TLC5940_MULTIPLEX_N)
-      row = 0;
-  }
+    //}
   setLow(BLANK_PORT, BLANK_PIN);
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 
   // Only page-flip if an update is not already in progress
-  if (TLC5940_GetGSUpdateFlag() && cycle == 0) {
+  if (TLC5940_GetGSUpdateFlag() && row == 0) {
     uint8_t *tmp = pFront;
     pFront = pBack;
     pBack = tmp;
     TLC5940_ClearGSUpdateFlag();
-    if (++cycle == TLC5940_MULTIPLEX_N)
-      cycle = 0;
+    //if (++cycle == TLC5940_MULTIPLEX_N)
+    //  cycle = 0;
     __asm__ volatile ("" ::: "memory"); // ensure pBack gets re-read
-  } else if (cycle > 0) {
-    if (++cycle == TLC5940_MULTIPLEX_N)
-      cycle = 0;
   }
+  // else if (cycle > 0) {
+  //  if (++cycle == TLC5940_MULTIPLEX_N)
+  //    cycle = 0;
+  //}
 
   gsOffset_t offset = (gsOffset_t)gsDataSize * row;
   gsData_t i = gsDataSize + 1;
   while (--i) // loop over gsData[row][i] or gsDataCache[row][i]
     TLC5940_TX(*(pFront + offset++));
 
-  TLC5940_SetXLATNeedsPulseFlag();
+  if (++row == TLC5940_MULTIPLEX_N)
+    row = 0;
+  //  TLC5940_SetXLATNeedsPulseFlag();
 
 #else // TLC5940_ENABLE_MULTIPLEXING
 
