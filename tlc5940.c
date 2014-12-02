@@ -461,10 +461,12 @@ ISR(TLC5940_TIMER_COMPA_vect) {
 
   setHigh(BLANK_PORT, BLANK_PIN);
   if (TLC5940_GetXLATNeedsPulseFlag()) {
+    XLAT_INPUT = (1 << XLAT_PIN); // toggle XLAT (set it high)
     TLC5940_ClearXLATNeedsPulseFlag();
-    pulse(XLAT_PORT, XLAT_PIN);
+    XLAT_INPUT = (1 << XLAT_PIN); // toggle XLAT (set it low)
   }
   setLow(BLANK_PORT, BLANK_PIN);
+
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 
   if (TLC5940_GetGSUpdateFlag()) {
