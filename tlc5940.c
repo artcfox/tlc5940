@@ -258,12 +258,20 @@ void TLC5940_ClockInGS(void) {
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
   // Turn on the last multiplexing MOSFET (so the toggle function works)
-  MULTIPLEX_PIN = toggleRows[TLC5940_MULTIPLEX_N];
-#endif // TLC5940_ENABLE_MULTIPLEXING
+  MULTIPLEX_INPUT = toggleRows[TLC5940_MULTIPLEX_N];
 
   // Shift in more zeroes, since the first thing the ISR does is pulse XLAT
   for (gsData_t i = 0; i < gsDataSize; i++)
     TLC5940_TX(0x00);
+
+#if (TLC5940_SPI_MODE == 1)
+  _delay_loop_1(12); // delay until double-buffered TX register is clear
+#endif // TLC5940_SPI_MODE
+
+#endif // TLC5940_ENABLE_MULTIPLEXING
+
+  // Set BLANK low, so the ISR can do a toggle, which is quicker
+  setLow(BLANK_PORT, BLANK_PIN);
 }
 
 void TLC5940_Init(void) {
@@ -415,11 +423,21 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   uint8_t tmp1 = *p;
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
-  setHigh(BLANK_PORT, BLANK_PIN);
-  pulse(XLAT_PORT, XLAT_PIN);
-  MULTIPLEX_PIN = tmp2; // turn off the previous row
-  MULTIPLEX_PIN = tmp1; // turn on the next row
-  setLow(BLANK_PORT, BLANK_PIN);
+#if (BLANK_AND_XLAT_SHARE_PORT)
+  BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // set BLANK and XLAT high
+#else // BLANK_AND_XLAT_SHARE_PORT
+  BLANK_INPUT = (1 << BLANK_PIN); // toggle BLANK (set it high)
+  XLAT_INPUT = (1 << XLAT_PIN); // toggle XLAT (set it high)
+#endif // BLANK_AND_XLAT_SHARE_PORT
+  MULTIPLEX_INPUT = tmp2; // turn off the previous row
+  MULTIPLEX_INPUT = tmp1; // turn on the next row
+#if (BLANK_AND_XLAT_SHARE_PORT)
+  BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // set BLANK and XLAT low
+#else // BLANK_AND_XLAT_SHARE_PORT
+  XLAT_INPUT = (1 << XLAT_PIN); // toggle XLAT (set it low)
+  BLANK_INPUT = (1 << BLANK_PIN); // toggle BLANK (set it low)
+#endif // BLANK_AND_XLAT_SHARE_PORT
+
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 
   // Only page-flip if new data is ready and we have finished displaying all rows

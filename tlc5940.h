@@ -51,9 +51,11 @@
 #define SCLK_PORT PORTB
 #define SCLK_PIN PB5
 
-#define BLANK_DDR DDRB
-#define BLANK_PORT PORTB
-#define BLANK_PIN PB2
+/* These definitions were moved to the tlc5940.mk file */
+/* #define BLANK_DDR DDRB */
+/* #define BLANK_PORT PORTB */
+/* #define BLANK_INPUT PINB */
+/* #define BLANK_PIN PB2 */
 #elif (TLC5940_SPI_MODE == 1)
 #define SIN_DDR DDRD
 #define SIN_PORT PORTD

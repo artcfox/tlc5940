@@ -156,18 +156,31 @@ TLC5940_FLAG_XLAT_NEEDS_PULSE = 1
 endif
 
 # BLANK is not configurable if the TLC5940 is using the normal SPI
-# Master mode (TLC5940_SPI_MODE = 0), but it is configurable when
-# TLC5940_SPI_MODE = 1 or 2
+# Master mode (TLC5940_SPI_MODE = 0)
+ifeq ($(TLC5940_SPI_MODE), 0)
+# --- THIS IS NOT CONFIGURABLE ---
+BLANK_DDR = DDRB   # DO NOT CHANGE
+BLANK_PORT = PORTB # DO NOT CHANGE
+BLANK_INPUT = PINB # DO NOT CHANGE
+BLANK_PIN = PB2    # DO NOT CHANGE
+# --- THIS IS NOT CONFIGURABLE ---
+endif
+
+# BLANK is configurable when TLC5940_SPI_MODE = 1 or 2
 #
 # WARNING: For an ATtiny85, when TLC5940_SPI_MODE = 2, BLANK_PIN
 # should be PB3 so the outputs are blanked during programming
 ifneq ($(TLC5940_SPI_MODE), 0)
+# --- YOU MAY CONFIGURE THIS ONE ---
 #BLANK_DDR = DDRD
 #BLANK_PORT = PORTD
+#BLANK_INPUT = PIND
 #BLANK_PIN = PD6
 BLANK_DDR = DDRB
 BLANK_PORT = PORTB
+BLANK_INPUT = PINB
 BLANK_PIN = PB3
+# --- YOU MAY CONFIGURE THIS ONE ---
 endif
 
 # VPRG and DCPRG pins are only defined if they aren't hardwired to GND
@@ -193,14 +206,21 @@ endif
 ifeq ($(TLC5940_SPI_MODE), 1)
 XLAT_DDR = DDRD
 XLAT_PORT = PORTD
+XLAT_INPUT = PIND
 XLAT_PIN = PD5
 else
 #XLAT_DDR = DDRB
 #XLAT_PORT = PORTB
+#XLAT_INPUT = PINB
 #XLAT_PIN = PB1
 XLAT_DDR = DDRB
 XLAT_PORT = PORTB
+XLAT_INPUT = PINB
 XLAT_PIN = PB0
+endif
+
+ifeq ($(BLANK_INPUT), $(XLAT_INPUT))
+BLANK_AND_XLAT_SHARE_PORT = 1
 endif
 
 ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
@@ -245,6 +265,7 @@ endif
 ifneq ($(TLC5940_SPI_MODE), 0)
 BLANK_DEFINES = -DBLANK_DDR=$(BLANK_DDR) \
                 -DBLANK_PORT=$(BLANK_PORT) \
+                -DBLANK_INPUT=$(BLANK_INPUT) \
                 -DBLANK_PIN=$(BLANK_PIN)
 endif
 
@@ -286,6 +307,8 @@ TLC5940_DEFINES = -DTLC5940_N=$(TLC5940_N) \
                   $(TLC5940_GPIOR0_DEFINES) \
                   -DXLAT_DDR=$(XLAT_DDR) \
                   -DXLAT_PORT=$(XLAT_PORT) \
-                  -DXLAT_PIN=$(XLAT_PIN)
+                  -DXLAT_INPUT=$(XLAT_INPUT) \
+                  -DXLAT_PIN=$(XLAT_PIN) \
+                  -DBLANK_AND_XLAT_SHARE_PORT=$(BLANK_AND_XLAT_SHARE_PORT)
 
 # ---------- End TLC5940 Configuration Section ----------
