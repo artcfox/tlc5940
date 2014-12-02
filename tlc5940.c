@@ -410,34 +410,26 @@ ISR(TLC5940_TIMER_COMPA_vect) {
 #if (TLC5940_ENABLE_MULTIPLEXING)
 
   static uint8_t *pFront = &gsData[0][0]; // read pointer
-  static uint8_t row;//, cycle; // initialized to 0 by default
+  static uint8_t row; // the row we are clocking new data out for
   const uint8_t *p = toggleRows + row; // forces efficient use of the Z-pointer
   uint8_t tmp1 = *p;
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
   setHigh(BLANK_PORT, BLANK_PIN);
-  //  if (TLC5940_GetXLATNeedsPulseFlag()) {
-    pulse(XLAT_PORT, XLAT_PIN);
-    MULTIPLEX_PIN = tmp2; // turn off the previous row
-    MULTIPLEX_PIN = tmp1; // turn on the next row
-    //}
+  pulse(XLAT_PORT, XLAT_PIN);
+  MULTIPLEX_PIN = tmp2; // turn off the previous row
+  MULTIPLEX_PIN = tmp1; // turn on the next row
   setLow(BLANK_PORT, BLANK_PIN);
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 
-  // Only page-flip if an update is not already in progress
+  // Only page-flip if new data is ready and we have finished displaying all rows
   if (TLC5940_GetGSUpdateFlag() && row == 0) {
     uint8_t *tmp = pFront;
     pFront = pBack;
     pBack = tmp;
     TLC5940_ClearGSUpdateFlag();
-    //if (++cycle == TLC5940_MULTIPLEX_N)
-    //  cycle = 0;
     __asm__ volatile ("" ::: "memory"); // ensure pBack gets re-read
   }
-  // else if (cycle > 0) {
-  //  if (++cycle == TLC5940_MULTIPLEX_N)
-  //    cycle = 0;
-  //}
 
   gsOffset_t offset = (gsOffset_t)gsDataSize * row;
   gsData_t i = gsDataSize + 1;
@@ -446,7 +438,6 @@ ISR(TLC5940_TIMER_COMPA_vect) {
 
   if (++row == TLC5940_MULTIPLEX_N)
     row = 0;
-  //  TLC5940_SetXLATNeedsPulseFlag();
 
 #else // TLC5940_ENABLE_MULTIPLEXING
 
