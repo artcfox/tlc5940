@@ -423,20 +423,16 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   uint8_t tmp1 = *p;
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
-#if (BLANK_AND_XLAT_SHARE_PORT)
-  BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // set BLANK and XLAT high
-#else // BLANK_AND_XLAT_SHARE_PORT
-  BLANK_INPUT = (1 << BLANK_PIN); // toggle BLANK (set it high)
-  XLAT_INPUT = (1 << XLAT_PIN); // toggle XLAT (set it high)
-#endif // BLANK_AND_XLAT_SHARE_PORT
+  togglePin(BLANK_INPUT, BLANK_PIN); // set BLANK high
+#if (MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+  togglePin(XLAT_INPUT, XLAT_PIN); // set XLAT high
+#endif // MULTIPLEX_AND_XLAT_SHARE_PORT
   MULTIPLEX_INPUT = tmp2; // turn off the previous row
   MULTIPLEX_INPUT = tmp1; // turn on the next row
-#if (BLANK_AND_XLAT_SHARE_PORT)
-  BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // set BLANK and XLAT low
-#else // BLANK_AND_XLAT_SHARE_PORT
-  XLAT_INPUT = (1 << XLAT_PIN); // toggle XLAT (set it low)
-  BLANK_INPUT = (1 << BLANK_PIN); // toggle BLANK (set it low)
-#endif // BLANK_AND_XLAT_SHARE_PORT
+#if (MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+  togglePin(XLAT_INPUT, XLAT_PIN); // set XLAT low
+#endif // MULTIPLEX_AND_XLAT_SHARE_PORT
+  togglePin(BLANK_INPUT, BLANK_PIN); // set BLANK low
 
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 
@@ -461,19 +457,17 @@ ISR(TLC5940_TIMER_COMPA_vect) {
 
   setHigh(BLANK_PORT, BLANK_PIN);
   if (TLC5940_GetXLATNeedsPulseFlag()) {
-    XLAT_INPUT = (1 << XLAT_PIN); // toggle XLAT (set it high)
+    togglePin(XLAT_INPUT, XLAT_PIN); // set XLAT high
     TLC5940_ClearXLATNeedsPulseFlag();
-    XLAT_INPUT = (1 << XLAT_PIN); // toggle XLAT (set it low)
+    togglePin(XLAT_INPUT, XLAT_PIN); // set XLAT low
   }
   setLow(BLANK_PORT, BLANK_PIN);
-
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 
   if (TLC5940_GetGSUpdateFlag()) {
     for (gsData_t i = 0; i < gsDataSize; i++)
       TLC5940_TX(gsData[i]);
-    TLC5940_SetXLATNeedsPulseFlag();
-    TLC5940_ClearGSUpdateFlag();
+    TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag(); // faster than separate
   }
 
 #endif // TLC5940_ENABLE_MULTIPLEXING

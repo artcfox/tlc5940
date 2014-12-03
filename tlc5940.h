@@ -80,6 +80,7 @@
 #define setLow(port, pin) ((port) &= ~(1 << (pin)))
 #define setHigh(port, pin) ((port) |= (1 << (pin)))
 #define getValue(port, pin) ((port) & (1 << (pin)))
+#define togglePin(input, pin) ((input) = (1 << (pin)))
 #define pulse(port, pin) do {                       \
                            setHigh((port), (pin));  \
                            setLow((port), (pin));   \
@@ -164,7 +165,7 @@ extern bool xlatNeedsPulse; // should never be directly read/written from user c
 static inline void TLC5940_SetXLATNeedsPulseFlag(void) __attribute__(( always_inline ));
 static inline void TLC5940_SetXLATNeedsPulseFlag(void) {
 #if (TLC5940_USE_GPIOR0)
-  setHigh(TLC5940_FLAGS, TLC5940_FLAG_XLAT_NEEDS_PULSE);
+  setLow(TLC5940_FLAGS, TLC5940_FLAG_XLAT_NEEDS_PULSE); // reversed, 0 = set
 #else // TLC5940_USE_GPIOR0
   xlatNeedsPulse = true;
 #endif // TLC5940_USE_GPIOR0
@@ -173,7 +174,7 @@ static inline void TLC5940_SetXLATNeedsPulseFlag(void) {
 static inline void TLC5940_ClearXLATNeedsPulseFlag(void) __attribute__(( always_inline ));
 static inline void TLC5940_ClearXLATNeedsPulseFlag(void) {
 #if (TLC5940_USE_GPIOR0)
-  setLow(TLC5940_FLAGS, TLC5940_FLAG_XLAT_NEEDS_PULSE);
+  setHigh(TLC5940_FLAGS, TLC5940_FLAG_XLAT_NEEDS_PULSE); // reversed, 1 = clear
 #else // TLC5940_USE_GPIOR0
   xlatNeedsPulse = false;
 #endif // TLC5940_USE_GPIOR0
@@ -182,11 +183,25 @@ static inline void TLC5940_ClearXLATNeedsPulseFlag(void) {
 static inline bool TLC5940_GetXLATNeedsPulseFlag(void) __attribute__(( always_inline ));
 static inline bool TLC5940_GetXLATNeedsPulseFlag(void) {
 #if (TLC5940_USE_GPIOR0)
-  return getValue(TLC5940_FLAGS, TLC5940_FLAG_XLAT_NEEDS_PULSE);
+  return !getValue(TLC5940_FLAGS, TLC5940_FLAG_XLAT_NEEDS_PULSE); // reversed
 #else // TLC5940_USE_GPIOR0
   return xlatNeedsPulse;
 #endif // TLC5940_USE_GPIOR0
 }
+
+// TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag should never be called from user code, except when implementing a non-default ISR
+static inline void TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag(void) __attribute__(( always_inline ));
+static inline void TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag(void) {
+#if (TLC5940_USE_GPIOR0)
+  // This is one clock faster than setting each individually, and is the
+  // reason why the TLC5940_FLAG_XLAT_NEEDS_PULSE value needed to be reversed
+  TLC5940_FLAGS &= ~((1 << TLC5940_FLAG_XLAT_NEEDS_PULSE) | (1 << TLC5940_FLAG_GS_UPDATE));
+#else // TLC5940_USE_GPIOR0
+  xlatNeedsPulse = true;
+  gsUpdateFlag = false;
+#endif // TLC5940_USE_GPIOR0
+}
+
 
 #if (TLC5940_INCLUDE_GAMMA_CORRECT)
 extern const uint16_t TLC5940_GammaCorrect[] PROGMEM;
