@@ -466,16 +466,9 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
   TLC5940_ToggleBLANK_XLAT();
-/*   togglePin(BLANK_INPUT, BLANK_PIN); // high */
-/* #if (MULTIPLEX_AND_XLAT_SHARE_PORT == 0) */
-/*   togglePin(XLAT_INPUT, XLAT_PIN); // high */
-/* #endif // MULTIPLEX_AND_XLAT_SHARE_PORT */
   MULTIPLEX_INPUT = tmp2; // turn off the previous row
+  TLC5940_RespectSetupAndHoldTimes();
   MULTIPLEX_INPUT = tmp1; // turn on the next row
-/* #if (MULTIPLEX_AND_XLAT_SHARE_PORT == 0) */
-/*   togglePin(XLAT_INPUT, XLAT_PIN); // low */
-/* #endif // MULTIPLEX_AND_XLAT_SHARE_PORT */
-/*   togglePin(BLANK_INPUT, BLANK_PIN); // low */
   TLC5940_ToggleXLAT_BLANK();
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 
@@ -498,25 +491,15 @@ ISR(TLC5940_TIMER_COMPA_vect) {
 
 #else // TLC5940_ENABLE_MULTIPLEXING
 
-  /* setHigh(BLANK_PORT, BLANK_PIN); */
-  /* if (TLC5940_GetXLATNeedsPulseFlag()) { */
-  /*   togglePin(XLAT_INPUT, XLAT_PIN); // high */
-  /*   TLC5940_ClearXLATNeedsPulseFlag(); */
-  /*   togglePin(XLAT_INPUT, XLAT_PIN); // low */
-  /* } */
-  /* setLow(BLANK_PORT, BLANK_PIN); */
-
   if (TLC5940_GetXLATNeedsPulseFlag()) {
     TLC5940_ToggleBLANK_XLAT();
+    TLC5940_RespectSetupAndHoldTimes();
     TLC5940_ToggleXLAT_BLANK();
-    /* BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // set BLANK and XLAT high at the same time */
-    /* BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // set BLANK and XLAT low at the same time */
     TLC5940_ClearXLATNeedsPulseFlag();
   } else {
     togglePin(BLANK_INPUT, BLANK_PIN); // high
+    TLC5940_RespectSetupAndHoldTimes();
     togglePin(BLANK_INPUT, BLANK_PIN); // low
-    /* BLANK_INPUT = (1 << BLANK_PIN); // set BLANK high */
-    /* BLANK_INPUT = (1 << BLANK_PIN); // set BLANK low */
   }
   // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
 

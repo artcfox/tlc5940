@@ -238,6 +238,14 @@ static inline void TLC5940_ToggleXLAT_BLANK(void) {
 #endif
 }
 
+static inline void TLC5940_RespectSetupAndHoldTimes(void) __attribute(( always_inline ));
+static inline void TLC5940_RespectSetupAndHoldTimes(void) {
+  // The code is now so optimized that we could violate some of the hold times in the datasheet
+#if (MULTIPLEX_AND_XLAT_SHARE_PORT == 1 || TLC5940_ENABLE_MULTIPLEXING == 0)
+  __asm__ volatile ("nop\n\t" ::);
+#endif // MULTIPLEX_AND_XLAT_SHARE_PORT
+}
+
 #if (TLC5940_INCLUDE_GAMMA_CORRECT)
 extern const uint16_t TLC5940_GammaCorrect[] PROGMEM;
 #endif // TLC5940_INCLUDE_GAMMA_CORRECT
