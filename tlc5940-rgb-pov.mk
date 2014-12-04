@@ -272,12 +272,12 @@ MULTIPLEX_AND_XLAT_SHARE_PORT = 0
 endif
 
 # This avoids a redefinition warning if TLC5940_SPI_MODE = 0
-ifneq ($(TLC5940_SPI_MODE), 0)
+#ifneq ($(TLC5940_SPI_MODE), 0)
 BLANK_DEFINES = -DBLANK_DDR=$(BLANK_DDR) \
                 -DBLANK_PORT=$(BLANK_PORT) \
                 -DBLANK_INPUT=$(BLANK_INPUT) \
                 -DBLANK_PIN=$(BLANK_PIN)
-endif
+#endif
 
 # This avoids adding needless defines if TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 1
 ifeq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 0)

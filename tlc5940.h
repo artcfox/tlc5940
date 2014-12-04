@@ -283,8 +283,6 @@ do {                                                                         \
 
 #define dcDataSize ((dcData_t)12 * TLC5940_N)
 
-extern uint8_t dcData[dcDataSize];
-
 #if (TLC5940_INLINE_SETDC_FUNCS)
 static inline void TLC5940_SetDC(channel_t channel, uint8_t value) __attribute__(( always_inline ));
 static inline void TLC5940_SetDC(channel_t channel, uint8_t value) {
@@ -294,23 +292,26 @@ static        void TLC5940_SetDC(channel_t channel, uint8_t value) {
 #endif // TLC5940_INLINE_SETDC_FUNCS
   channel = numChannels - 1 - channel;
   channel_t i = (channel3_t)channel * 3 / 4;
+#if (TLC5940_ENABLE_MULTIPLEXING == 0)
+  uint8_t *pBack = &gsData[0];
+#endif // TLC5940_ENABLE_MULTIPLEXING
 
   switch (channel % 4) {
   case 0:
-    dcData[i] = (dcData[i] & 0x03) | (uint8_t)(value << 2);
+    *(pBack + i) = (*(pBack + i) & 0x03) | (uint8_t)(value << 2);
     break;
   case 1:
-    dcData[i] = (dcData[i] & 0xFC) | (value >> 4);
+    *(pBack + i) = (*(pBack + i) & 0xFC) | (value >> 4);
     i++;
-    dcData[i] = (dcData[i] & 0x0F) | (uint8_t)(value << 4);
+    *(pBack + i) = (*(pBack + i) & 0x0F) | (uint8_t)(value << 4);
     break;
   case 2:
-    dcData[i] = (dcData[i] & 0xF0) | (value >> 2);
+    *(pBack + i) = (*(pBack + i) & 0xF0) | (value >> 2);
     i++;
-    dcData[i] = (dcData[i] & 0x3F) | (uint8_t)(value << 6);
+    *(pBack + i) = (*(pBack + i) & 0x3F) | (uint8_t)(value << 6);
     break;
   default: // case 3:
-    dcData[i] = (dcData[i] & 0xC0) | (value);
+    *(pBack + i) = (*(pBack + i) & 0xC0) | (value);
     break;
   }
 }
@@ -322,6 +323,9 @@ static inline void TLC5940_SetAllDC(uint8_t value) {
 static        void TLC5940_SetAllDC(uint8_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_SetAllDC(uint8_t value) {
 #endif // TLC5940_INLINE_SETDC_FUNCS
+#if (TLC5940_ENABLE_MULTIPLEXING == 0)
+  uint8_t *pBack = &gsData[0];
+#endif // TLC5940_ENABLE_MULTIPLEXING
   uint8_t tmp1 = (uint8_t)(value << 2);
   uint8_t tmp2 = (uint8_t)(tmp1 << 2);
   uint8_t tmp3 = (uint8_t)(tmp2 << 2);
@@ -331,9 +335,9 @@ static        void TLC5940_SetAllDC(uint8_t value) {
 
   dcData_t i = 0;
   do {
-    dcData[i++] = tmp1;              // bits: 05 04 03 02 01 00 05 04
-    dcData[i++] = tmp2;              // bits: 03 02 01 00 05 04 03 02
-    dcData[i++] = tmp3;              // bits: 01 00 05 04 03 02 01 00
+    *(pBack + i++) = tmp1;              // bits: 05 04 03 02 01 00 05 04
+    *(pBack + i++) = tmp2;              // bits: 03 02 01 00 05 04 03 02
+    *(pBack + i++) = tmp3;              // bits: 01 00 05 04 03 02 01 00
   } while (i < dcDataSize);
 }
 
@@ -350,6 +354,9 @@ static        void TLC5940_Set4DC(channel_t channel, uint8_t value) {
 #endif // TLC5940_INLINE_SETDC_FUNCS
   channel = numChannels - 1 - (channel * 4) - 3;
   channel_t i = (channel3_t)channel * 3 / 4;
+#if (TLC5940_ENABLE_MULTIPLEXING == 0)
+  uint8_t *pBack = &gsData[0];
+#endif // TLC5940_ENABLE_MULTIPLEXING
 
   uint8_t tmp1 = (uint8_t)(value << 2);
   uint8_t tmp2 = (uint8_t)(tmp1 << 2);
@@ -358,13 +365,29 @@ static        void TLC5940_Set4DC(channel_t channel, uint8_t value) {
   tmp2 |= (value >> 2);
   tmp3 |= value;
 
-  dcData[i++] = tmp1;              // bits: 05 04 03 02 01 00 05 04
-  dcData[i++] = tmp2;              // bits: 03 02 01 00 05 04 03 02
-  dcData[i] = tmp3;                // bits: 01 00 05 04 03 02 01 00
+  *(pBack + i++) = tmp1;              // bits: 05 04 03 02 01 00 05 04
+  *(pBack + i++) = tmp2;              // bits: 03 02 01 00 05 04 03 02
+  *(pBack + i) = tmp3;                // bits: 01 00 05 04 03 02 01 00
 }
-
 #endif // TLC5940_INCLUDE_SET4_FUNCS
-void TLC5940_ClockInDC(void);
+
+static inline void TLC5940_ClockInDC(void) __attribute__(( always_inline ));;
+static inline void TLC5940_ClockInDC(void) {
+  setHigh(DCPRG_PORT, DCPRG_PIN);
+  setHigh(VPRG_PORT, VPRG_PIN);
+
+#if (TLC5940_ENABLE_MULTIPLEXING == 0)
+  uint8_t *pBack = &gsData[0];
+#endif // TLC5940_ENABLE_MULTIPLEXING
+  for (dcData_t i = 0; i < dcDataSize; i++)
+    TLC5940_TX(*(pBack + i));
+
+#if (TLC5940_SPI_MODE == 1)
+  _delay_loop_1(12); // delay until double-buffered TX register is clear
+#endif // TLC5940_SPI_MODE
+
+  pulse(XLAT_PORT, XLAT_PIN);
+}
 #endif // TLC5940_INCLUDE_DC_FUNCS
 
 #if (TLC5940_ENABLE_MULTIPLEXING)

@@ -41,6 +41,7 @@
 // toggles of XLAT at the same time that we are toggling the MOSFETs. We
 // may even be able to toggle BLANK at the same time too, but perhaps it
 // is safer not to.
+
 #if (MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
 #if (BLANK_AND_XLAT_SHARE_PORT == 1)
 #define TLC5940_TR_EXTRAS ((1 << BLANK_PIN) | (1 << XLAT_PIN))
@@ -202,23 +203,6 @@ const uint16_t TLC5940_GammaCorrect[] PROGMEM = {
 #undef V
 #endif // TLC5940_INCLUDE_GAMMA_CORRECT
 
-#if (TLC5940_INCLUDE_DC_FUNCS)
-uint8_t dcData[dcDataSize];
-
-void TLC5940_ClockInDC(void) {
-  setHigh(DCPRG_PORT, DCPRG_PIN);
-  setHigh(VPRG_PORT, VPRG_PIN);
-  for (dcData_t i = 0; i < dcDataSize; i++)
-    TLC5940_TX(dcData[i]);
-
-#if (TLC5940_SPI_MODE == 1)
-  _delay_loop_1(12); // delay until double-buffered TX register is clear
-#endif // TLC5940_SPI_MODE
-
-  pulse(XLAT_PORT, XLAT_PIN);
-}
-#endif // TLC5940_INCLUDE_DC_FUNCS
-
 void TLC5940_ClockInGS(void) {
   // Manually load in a bunch of dummy data (all zeroes), so the ISR
   // doesn't have to have extra conditionals for firstCycleFlag or
@@ -297,8 +281,8 @@ void TLC5940_ClockInGS(void) {
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
   // Turn on the last multiplexing MOSFET (so the toggle function works).
-  // The "& ~(TLC5940_TR_EXTRAS)" is so we don't erroneously toggle XLAT if
-  // it shares the same PORT as the MULTIPLEX pins.
+  // The "& ~(TLC5940_TR_EXTRAS)" is so we don't erroneously toggle
+  // XLAT/BLANK if they share the same PORT as the MULTIPLEX pins.
   MULTIPLEX_INPUT = toggleRows[TLC5940_MULTIPLEX_N] & ~(TLC5940_TR_EXTRAS);
 
   // Shift in more zeroes, since the first thing the ISR does is pulse XLAT
