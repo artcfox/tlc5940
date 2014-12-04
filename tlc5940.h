@@ -157,6 +157,7 @@ static inline bool TLC5940_GetGSUpdateFlag(void) {
 #endif // TLC5940_USE_GPIOR0
 }
 
+#if (TLC5940_ENABLE_MULTIPLEXING == 0)
 #if (TLC5940_USE_GPIOR0 == 0)
 extern bool xlatNeedsPulse; // should never be directly read/written from user code, ever
 #endif // TLC5940_USE_GPIOR0
@@ -201,7 +202,41 @@ static inline void TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag(void) {
   gsUpdateFlag = false;
 #endif // TLC5940_USE_GPIOR0
 }
+#endif // TLC5940_ENABLE_MULTIPLEXING
 
+// TLC5940_ToggleBLANK_XLAT should never be called from user code, except when implementing a non-default ISR
+static inline void TLC5940_ToggleBLANK_XLAT(void) __attribute__(( always_inline ));
+static inline void TLC5940_ToggleBLANK_XLAT(void) {
+#if (BLANK_AND_XLAT_SHARE_PORT == 0 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+  togglePin(BLANK_INPUT, BLANK_PIN); // high
+  togglePin(XLAT_INPUT, XLAT_PIN); // high
+#elif (BLANK_AND_XLAT_SHARE_PORT == 0 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+  togglePin(BLANK_INPUT, BLANK_PIN); // high
+  // The toggling of XLAT is embedded in the const definition of toggleRows
+#elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+  BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // both high at once
+#elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+  // The toggling of BLANK is embedded in the const definition of toggleRows
+  // The toggling of XLAT is embedded in the const definition of toggleRows
+#endif
+}
+
+// TLC5940_ToggleXLAT_BLANK should never be called from user code, except when implementing a non-default ISR
+static inline void TLC5940_ToggleXLAT_BLANK(void) __attribute__(( always_inline ));
+static inline void TLC5940_ToggleXLAT_BLANK(void) {
+#if (BLANK_AND_XLAT_SHARE_PORT == 0 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+  togglePin(XLAT_INPUT, XLAT_PIN); // low
+  togglePin(BLANK_INPUT, BLANK_PIN); // low
+#elif (BLANK_AND_XLAT_SHARE_PORT == 0 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+  // The toggling of XLAT is embedded in the const definition of toggleRows
+  togglePin(BLANK_INPUT, BLANK_PIN); // low
+#elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+  BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // both low at once
+#elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+  // The toggling of XLAT is embedded in the const definition of toggleRows
+  // The toggling of BLANK is embedded in the const definition of toggleRows
+#endif
+}
 
 #if (TLC5940_INCLUDE_GAMMA_CORRECT)
 extern const uint16_t TLC5940_GammaCorrect[] PROGMEM;

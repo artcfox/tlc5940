@@ -1,12 +1,12 @@
 # ---------- Begin TLC5940 Configuration Section ----------
 
 # Defines the number of TLC5940 chips that are connected in series
-TLC5940_N = 1
+TLC5940_N = 4
 
 # Flag for including variables/functions for manually setting the dot correction
 #  0 = Do not include dot correction features (generates smaller code)
 #  1 = Include dot correction features (will still read from EEPROM by default)
-TLC5940_INCLUDE_DC_FUNCS = 0
+TLC5940_INCLUDE_DC_FUNCS = 1
 
 # Flag for whether VPRG and DCPRG are hardwired to GND (uses two less pins)
 #  0 = The VPRG and DCPRG pins must be defined on the AVR and
@@ -15,7 +15,7 @@ TLC5940_INCLUDE_DC_FUNCS = 0
 #      GND, and TLC5940_INCLUDE_DC_FUNCS must be set to 0 (disables
 #      dot correction mode).
 # WARNING: Before you enable this option, you must wire the chip up differently!
-TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 1
+TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 0
 
 # Flag for including efficient functions for setting the grayscale
 # (and optionally dot correction) values of four channels at once.
@@ -51,7 +51,7 @@ TLC5940_INCLUDE_DEFAULT_ISR = 1
 #
 #  0 = Do not store a gamma correction table in flash memory
 #  1 = Stores a gamma correction table in flash memory
-TLC5940_INCLUDE_GAMMA_CORRECT = 0
+TLC5940_INCLUDE_GAMMA_CORRECT = 1
 
 # Flag for forced inlining of the SetDC, SetAllDC, and Set4DC functions.
 #  0 = Force all calls to the Set*DC family of functions to be actual
@@ -78,7 +78,7 @@ TLC5940_INLINE_SETGS_FUNCS = 1
 #  1 = Enable multiplexing; The gsData array will become two-dimensional, and
 #      functions in the Set*GS family require another argument which corresponds
 #      to the multiplexed row they operate on.
-TLC5940_ENABLE_MULTIPLEXING = 0
+TLC5940_ENABLE_MULTIPLEXING = 1
 
 # The following options only apply if TLC5940_ENABLE_MULTIPLEXING = 1
 ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
@@ -112,7 +112,7 @@ endif
 #
 # WARNING: Before you change this option, you must wire the chip up differently,
 #          and/or switch chips!
-TLC5940_SPI_MODE = 2
+TLC5940_SPI_MODE = 1
 
 # Defines the number of bits used to define a single PWM cycle. The default
 # is 12, but it may be lowered to achieve faster refreshes, at the expense
@@ -172,14 +172,14 @@ endif
 # should be PB3 so the outputs are blanked during programming
 ifneq ($(TLC5940_SPI_MODE), 0)
 # --- YOU MAY CONFIGURE THIS ONE ---
-#BLANK_DDR = DDRD
-#BLANK_PORT = PORTD
-#BLANK_INPUT = PIND
-#BLANK_PIN = PD6
-BLANK_DDR = DDRB
-BLANK_PORT = PORTB
-BLANK_INPUT = PINB
-BLANK_PIN = PB3
+BLANK_DDR = DDRD
+BLANK_PORT = PORTD
+BLANK_INPUT = PIND
+BLANK_PIN = PD5
+#BLANK_DDR = DDRB
+#BLANK_PORT = PORTB
+#BLANK_INPUT = PINB
+#BLANK_PIN = PB3
 # --- YOU MAY CONFIGURE THIS ONE ---
 endif
 
@@ -199,7 +199,7 @@ endif
 # DDR, PORT, and PIN connected to VPRG
 VPRG_DDR = DDRD
 VPRG_PORT = PORTD
-VPRG_PIN = PD7
+VPRG_PIN = PD0
 endif
 
 # DDR, PORT, and PIN connected to XLAT (always configurable)
@@ -207,16 +207,16 @@ ifeq ($(TLC5940_SPI_MODE), 1)
 XLAT_DDR = DDRD
 XLAT_PORT = PORTD
 XLAT_INPUT = PIND
-XLAT_PIN = PD5
+XLAT_PIN = PD2
 else
-#XLAT_DDR = DDRB
-#XLAT_PORT = PORTB
-#XLAT_INPUT = PINB
-#XLAT_PIN = PB1
 XLAT_DDR = DDRB
 XLAT_PORT = PORTB
 XLAT_INPUT = PINB
-XLAT_PIN = PB0
+XLAT_PIN = PB1
+#XLAT_DDR = DDRB
+#XLAT_PORT = PORTB
+#XLAT_INPUT = PINB
+#XLAT_PIN = PB0
 endif
 
 ifeq ($(BLANK_INPUT), $(XLAT_INPUT))
