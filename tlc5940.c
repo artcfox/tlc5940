@@ -36,12 +36,17 @@
 #include "tlc5940.h"
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
-// If the pins we are multiplexing across come from the same PORT as XLAT,
-// then we don't need to pulse XLAT individually, we can perform the
-// toggles of XLAT at the same time that we are toggling the MOSFETs. We
-// may even be able to toggle BLANK at the same time too, but perhaps it
-// is safer not to.
 
+uint8_t gsData[TLC5940_MULTIPLEX_N][gsDataSize];
+static uint8_t gsDataCache[TLC5940_MULTIPLEX_N][gsDataSize];
+uint8_t *pBack;
+
+// If the pins we are multiplexing across come from the same PORT as XLAT,
+// then we don't need to toggle XLAT separately, we can toggle XLAT
+// during the same clock cycle that we toggle the MOSFET pins. If BLANK
+// also shares the same PORT, then we can toggle BLANK during that same
+// clock cycle as well. We also need to be careful not to violate the
+// setup and hold times as described in the datasheet.
 #if (MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
 #if (BLANK_AND_XLAT_SHARE_PORT == 1)
 #define TLC5940_TR_EXTRAS ((1 << BLANK_PIN) | (1 << XLAT_PIN))
@@ -102,12 +107,8 @@ const uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N] = {
   (1 << ROW0_PIN) | TLC5940_TR_EXTRAS, (1 << ROW1_PIN) | TLC5940_TR_EXTRAS,
   (1 << ROW2_PIN) | TLC5940_TR_EXTRAS, (1 << ROW3_PIN) | TLC5940_TR_EXTRAS,
   (1 << ROW4_PIN) | TLC5940_TR_EXTRAS, (1 << ROW5_PIN) | TLC5940_TR_EXTRAS,
-#endif // TLC5940_ENABLE_MULTIPLEXING
+#endif // TLC5940_MULTIPLEX_N
 }; // const toggleRows[2 * TLC5940_MULTIPLEX_N]
-
-uint8_t gsData[TLC5940_MULTIPLEX_N][gsDataSize];
-static uint8_t gsDataCache[TLC5940_MULTIPLEX_N][gsDataSize];
-uint8_t *pBack;
 #else // TLC5940_ENABLE_MULTIPLEXING
 uint8_t gsData[gsDataSize];
 #endif // TLC5940_ENABLE_MULTIPLEXING
@@ -203,101 +204,24 @@ const uint16_t TLC5940_GammaCorrect[] PROGMEM = {
 #undef V
 #endif // TLC5940_INCLUDE_GAMMA_CORRECT
 
-void TLC5940_ClockInGS(void) {
-  // Manually load in a bunch of dummy data (all zeroes), so the ISR
-  // doesn't have to have extra conditionals for firstCycleFlag or
-  // worry about having to pulse SCLK one extra time in those cases.
-
-#if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
-  bool firstCycleFlag = false;
-  if (getValue(VPRG_PORT, VPRG_PIN)) {
-    setLow(VPRG_PORT, VPRG_PIN);
-    firstCycleFlag = true;
-  }
-#endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
-
-  // Normally we would set BLANK low here (it should still be high
-  // from the previous call to TLC5940_Init), but the TLC5940's
-  // grayscale registers will contain garbage right after powering on
-  // so by keeping BLANK high, we will prevent that garbage from being
-  // displayed, and then we will clock in all zeroes to prevent that
-  // garbage from ever being displayed.
-
-  for (gsData_t i = 0; i < gsDataSize; i++)
-    TLC5940_TX(0x00); // clock in zeroes, since this data will be latched now
-
-#if (TLC5940_SPI_MODE == 1)
-  _delay_loop_1(12); // delay until double-buffered TX register is clear
-#endif // TLC5940_SPI_MODE
-
-  // If we hadn't skipped setting BLANK low above, this is where we
-  // would have set it back to high.
-
-  pulse(XLAT_PORT, XLAT_PIN);
-#if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
-  if (firstCycleFlag) {
-#endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
-
-#if (TLC5940_SPI_MODE == 0)
-    SPCR = SPSR = 0;
-
-    setHigh(SCLK_PORT, SCLK_PIN);
-
-    SPCR = (1 << SPE) | (1 << MSTR);
-    SPSR = (1 << SPI2X);
-#elif (TLC5940_SPI_MODE == 1)
-
-    // According to the ATmega328P datasheet, we should only have to
-    // disable the transmitter in order to manually pulse the XCK pin,
-    // however my logic analyzer disagrees.
-
-    // Disable the USART Master SPI Mode, and Transmitter completely
-    UCSR0C = UCSR0B = 0;
-
-    // Only now can we manually pulse our XCK pin to provide an extra
-    // pulse on SCLK. To ensure we only get a single pulse (rather than
-    // a double pulse) we only call setHigh(), rather than pulse()
-    // because re-enabling the USART as SPI master below will force
-    // the XCK pin back low, but sometimes it will briefly be set high
-    // first, which would result in a double pulse.
-
-    setHigh(SCLK_PORT, SCLK_PIN);
-
-    // Baud rate must be set to 0 prior to enabling the USART as SPI
-    // master, to ensure proper initialization of the XCK line.
-    UBRR0 = 0;
-    // Set USART to Master SPI mode.
-    UCSR0C = (1 << UMSEL01) | (1 << UMSEL00);
-    // Enable TX only
-    UCSR0B = (1 << TXEN0);
-    // Set baud rate. Must be set _after_ enabling the transmitter.
-    UBRR0 = 0;
-#elif (TLC5940_SPI_MODE == 2)
-    pulse(SCLK_PORT, SCLK_PIN);
-#endif // TLC5940_SPI_MODE
-#if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
-  }
-#endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
-
-#if (TLC5940_ENABLE_MULTIPLEXING)
-  // Turn on the last multiplexing MOSFET (so the toggle function works).
-  // The "& ~(TLC5940_TR_EXTRAS)" is so we don't erroneously toggle
-  // XLAT/BLANK if they share the same PORT as the MULTIPLEX pins.
-  MULTIPLEX_INPUT = toggleRows[TLC5940_MULTIPLEX_N] & ~(TLC5940_TR_EXTRAS);
-
-  // Shift in more zeroes, since the first thing the ISR does is pulse XLAT
-  for (gsData_t i = 0; i < gsDataSize; i++)
-    TLC5940_TX(0x00);
-
-#if (TLC5940_SPI_MODE == 1)
-  _delay_loop_1(12); // delay until double-buffered TX register is clear
-#endif // TLC5940_SPI_MODE
-
-#endif // TLC5940_ENABLE_MULTIPLEXING
-
-  // Set BLANK low, so the ISR can do a toggle, which is quicker
-  setLow(BLANK_PORT, BLANK_PIN);
-}
+#if (TLC5940_PWM_BITS == 12)
+// Generate an interrupt every 4096 clock cycles
+#define TLC5940_CTC_TOP 15
+#elif (TLC5940_PWM_BITS == 11)
+// Generate an interrupt every 2048 clock cycles
+#define TLC5940_CTC_TOP 7
+#elif (TLC5940_PWM_BITS == 10)
+// Generate an interrupt every 1024 clock cycles
+#define TLC5940_CTC_TOP 3
+#elif (TLC5940_PWM_BITS == 9)
+// Generate an interrupt every 512 clock cycles
+#define TLC5940_CTC_TOP 1
+#elif (TLC5940_PWM_BITS == 8)
+// Generate an interrupt every 256 clock cycles
+#define TLC5940_CTC_TOP 0
+#else
+#error "TLC5940_PWM_BITS must be 8, 9, 10, 11, or 12"
+#endif // TLC5940_PWM_BITS
 
 void TLC5940_Init(void) {
   setOutput(SCLK_DDR, SCLK_PIN);
@@ -382,20 +306,8 @@ void TLC5940_Init(void) {
   TCCR0A = (1 << WGM01);
   // clk_io/256 (From prescaler)
   TCCR0B = (1 << CS02);
-
-#if (TLC5940_PWM_BITS == 12)
-  OCR0A = 15; // Generate an interrupt every 4096 clock cycles
-#elif (TLC5940_PWM_BITS == 11)
-  OCR0A = 7;  // Generate an interrupt every 2048 clock cycles
-#elif (TLC5940_PWM_BITS == 10)
-  OCR0A = 3;  // Generate an interrupt every 1024 clock cycles
-#elif (TLC5940_PWM_BITS == 9)
-  OCR0A = 1;  // Generate an interrupt every 512 clock cycles
-#elif (TLC5940_PWM_BITS == 8)
-  OCR0A = 0;  // Generate an interrupt every 256 clock cycles
-#else
-#error "TLC5940_PWM_BITS must be 8, 9, 10, 11, or 12"
-#endif // TLC5940_PWM_BITS
+  // Generate an interrupt every (TLC5940_CTC_TOP + 1) * 256 clock cycles
+  OCR0A = TLC5940_CTC_TOP;
 
   // Enable Timer/Counter0 Compare Match A interrupt
 #ifdef TIMSK0
@@ -409,27 +321,110 @@ void TLC5940_Init(void) {
   TCCR2A = (1 << WGM21);
   // clk_io/256 (From prescaler)
   TCCR2B = (1 << CS22) | (1 << CS21);
-
-#if (TLC5940_PWM_BITS == 12)
-  OCR2A = 15; // Generate an interrupt every 4096 clock cycles
-#elif (TLC5940_PWM_BITS == 11)
-  OCR2A = 7;  // Generate an interrupt every 2048 clock cycles
-#elif (TLC5940_PWM_BITS == 10)
-  OCR2A = 3;  // Generate an interrupt every 1024 clock cycles
-#elif (TLC5940_PWM_BITS == 9)
-  OCR2A = 1;  // Generate an interrupt every 512 clock cycles
-#elif (TLC5940_PWM_BITS == 8)
-  OCR2A = 0;  // Generate an interrupt every 256 clock cycles
-#else
-#error "TLC5940_PWM_BITS must be 8, 9, 10, 11, or 12"
-#endif // TLC5940_PWM_BITS
-
+  // Generate an interrupt every (TLC5940_CTC_TOP + 1) * 256 clock cycles
+  OCR2A = TLC5940_CTC_TOP;
   // Enable Timer/Counter2 Compare Match A interrupt
   TIMSK2 |= (1 << OCIE2A);
-
 #else
 #error "TLC5940_ISR_CTC_TIMER must be 0 or 2"
 #endif // TLC5940_ISR_CTC_TIMER
+}
+
+void TLC5940_ClockInGS(void) {
+  // Manually load in a bunch of dummy data (all zeroes), so the ISR
+  // doesn't have to have extra conditionals for firstCycleFlag or
+  // worry about having to pulse SCLK one extra time in those cases.
+
+#if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
+  bool firstCycleFlag = false;
+  if (getValue(VPRG_PORT, VPRG_PIN)) {
+    setLow(VPRG_PORT, VPRG_PIN);
+    firstCycleFlag = true;
+  }
+#endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
+
+  // Normally we would set BLANK low here (it should still be high
+  // from the previous call to TLC5940_Init), but the TLC5940's
+  // grayscale registers will contain garbage right after powering on
+  // so by keeping BLANK high, we will prevent that garbage from being
+  // displayed, and then we will clock in all zeroes to prevent that
+  // garbage from ever being displayed.
+
+  for (gsData_t i = 0; i < gsDataSize; i++)
+    TLC5940_TX(0x00); // clock in zeroes, since this data will be latched now
+
+#if (TLC5940_SPI_MODE == 1)
+  _delay_loop_1(12); // delay until double-buffered TX register is clear
+#endif // TLC5940_SPI_MODE
+
+  // If we hadn't skipped setting BLANK low above, this is where we
+  // would have set it back to high.
+
+  pulse(XLAT_PORT, XLAT_PIN);
+#if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
+  if (firstCycleFlag) {
+#endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
+
+#if (TLC5940_SPI_MODE == 0)
+    SPCR = SPSR = 0;
+
+    setHigh(SCLK_PORT, SCLK_PIN);
+    // SCLK will be set low automatically by the SPI hardware
+
+    SPCR = (1 << SPE) | (1 << MSTR);
+    SPSR = (1 << SPI2X);
+#elif (TLC5940_SPI_MODE == 1)
+
+    // According to the ATmega328P datasheet, we should only have to
+    // disable the transmitter in order to manually pulse the XCK pin,
+    // however my logic analyzer disagrees.
+
+    // Disable the USART Master SPI Mode, and Transmitter completely
+    UCSR0C = UCSR0B = 0;
+
+    // Only now can we manually pulse our XCK pin to provide an extra
+    // pulse on SCLK. To ensure we only get a single pulse (rather than
+    // a double pulse) we only call setHigh(), rather than pulse()
+    // because re-enabling the USART as SPI master below will force
+    // the XCK pin back low, but sometimes it will briefly be set high
+    // first, which would result in a double pulse.
+
+    setHigh(SCLK_PORT, SCLK_PIN);
+
+    // Baud rate must be set to 0 prior to enabling the USART as SPI
+    // master, to ensure proper initialization of the XCK line.
+    UBRR0 = 0;
+    // Set USART to Master SPI mode.
+    UCSR0C = (1 << UMSEL01) | (1 << UMSEL00);
+    // Enable TX only
+    UCSR0B = (1 << TXEN0);
+    // Set baud rate. Must be set _after_ enabling the transmitter.
+    UBRR0 = 0;
+#elif (TLC5940_SPI_MODE == 2)
+    pulse(SCLK_PORT, SCLK_PIN);
+#endif // TLC5940_SPI_MODE
+#if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
+  }
+#endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
+
+#if (TLC5940_ENABLE_MULTIPLEXING)
+  // Turn on the last multiplexing MOSFET (so the toggle function works).
+  // The "& ~(TLC5940_TR_EXTRAS)" is so we don't erroneously toggle
+  // XLAT/BLANK if they share the same PORT as the MULTIPLEX pins.
+  MULTIPLEX_INPUT = toggleRows[TLC5940_MULTIPLEX_N] & ~(TLC5940_TR_EXTRAS);
+
+  // Shift in more zeroes, since the first thing the ISR does is pulse XLAT
+  for (gsData_t i = 0; i < gsDataSize; i++)
+    TLC5940_TX(0x00);
+
+#if (TLC5940_SPI_MODE == 1)
+  _delay_loop_1(12); // delay until double-buffered TX register is clear
+#endif // TLC5940_SPI_MODE
+
+#endif // TLC5940_ENABLE_MULTIPLEXING
+
+  // Set BLANK low, so the ISR can do a toggle, which is quicker
+  setLow(BLANK_PORT, BLANK_PIN);
 }
 
 #if (TLC5940_ENABLE_MULTIPLEXING == 0)
@@ -439,13 +434,13 @@ bool xlatNeedsPulse;
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
 #if (TLC5940_INCLUDE_DEFAULT_ISR)
-// This interrupt will get called every 2^TLC5940_PWM_BITS clock cycles
+// Interrupt gets called every (TLC5940_CTC_TOP + 1) * 256 clock cycles
 ISR(TLC5940_TIMER_COMPA_vect) {
 #if (TLC5940_ENABLE_MULTIPLEXING)
 
   static uint8_t *pFront = &gsData[0][0]; // read pointer
   static uint8_t row; // the row we are clocking new data out for
-  const uint8_t *p = toggleRows + row; // forces efficient use of the Z-pointer
+  const uint8_t *p = toggleRows + row; // force efficient use of Z-pointer
   uint8_t tmp1 = *p;
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
@@ -454,9 +449,9 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   TLC5940_RespectSetupAndHoldTimes();
   MULTIPLEX_INPUT = tmp1; // turn on the next row
   TLC5940_ToggleXLAT_BLANK();
-  // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
+  // We now have (TLC5940_CTC_TOP + 1) * 256 clocks to send data for next cycle
 
-  // Only page-flip if new data is ready and we have finished displaying all rows
+  // Only page-flip if new data is ready and we finished displaying all rows
   if (TLC5940_GetGSUpdateFlag() && row == 0) {
     uint8_t *tmp = pFront;
     pFront = pBack;
@@ -485,7 +480,7 @@ ISR(TLC5940_TIMER_COMPA_vect) {
     TLC5940_RespectSetupAndHoldTimes();
     togglePin(BLANK_INPUT, BLANK_PIN); // low
   }
-  // Below we have 2^TLC5940_PWM_BITS cycles to send the data for the next cycle
+  // We now have (TLC5940_CTC_TOP + 1) * 256 clocks to send data for next cycle
 
   if (TLC5940_GetGSUpdateFlag()) {
     for (gsData_t i = 0; i < gsDataSize; i++)

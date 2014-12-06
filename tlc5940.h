@@ -38,6 +38,7 @@
 
 #if (TLC5940_INCLUDE_GAMMA_CORRECT)
 #include <avr/pgmspace.h>
+extern const uint16_t TLC5940_GammaCorrect[] PROGMEM;
 #endif // TLC5940_INCLUDE_GAMMA_CORRECT
 
 // These options are not configurable because they rely on specific hardware
@@ -50,12 +51,6 @@
 #define SCLK_DDR DDRB
 #define SCLK_PORT PORTB
 #define SCLK_PIN PB5
-
-/* These definitions were moved to the tlc5940.mk file */
-/* #define BLANK_DDR DDRB */
-/* #define BLANK_PORT PORTB */
-/* #define BLANK_INPUT PINB */
-/* #define BLANK_PIN PB2 */
 #elif (TLC5940_SPI_MODE == 1)
 #define SIN_DDR DDRD
 #define SIN_PORT PORTD
@@ -87,27 +82,27 @@
                          } while (0)
 
 #if (24 * TLC5940_N > 255)
-#define gsData_t uint16_t
+typedef uint16_t gsData_t;
 #else
-#define gsData_t uint8_t
+typedef uint8_t gsData_t;
 #endif
 
 #if (16 * TLC5940_N > 255)
-#define channel_t uint16_t
+typedef uint16_t channel_t;
 #else
-#define channel_t uint8_t
+typedef uint8_t channel_t;
 #endif
 
 #if (3 * 16 * TLC5940_N > 255)
-#define channel3_t uint16_t
+typedef uint16_t channel3_t;
 #else
-#define channel3_t uint8_t
+typedef uint8_t channel3_t;
 #endif
 
 #if (24 * TLC5940_N * TLC5940_MULTIPLEX_N > 255)
-#define gsOffset_t uint16_t
+typedef uint16_t gsOffset_t;
 #else
-#define gsOffset_t uint8_t
+typedef uint8_t gsOffset_t;
 #endif
 
 #define gsDataSize ((gsData_t)24 * TLC5940_N)
@@ -246,10 +241,6 @@ static inline void TLC5940_RespectSetupAndHoldTimes(void) {
 #endif // MULTIPLEX_AND_XLAT_SHARE_PORT
 }
 
-#if (TLC5940_INCLUDE_GAMMA_CORRECT)
-extern const uint16_t TLC5940_GammaCorrect[] PROGMEM;
-#endif // TLC5940_INCLUDE_GAMMA_CORRECT
-
 // Define a macro for SPI Transmit
 #if (TLC5940_SPI_MODE == 0)
 #define TLC5940_TX(data) do {                              \
@@ -371,7 +362,7 @@ static        void TLC5940_Set4DC(channel_t channel, uint8_t value) {
 }
 #endif // TLC5940_INCLUDE_SET4_FUNCS
 
-static inline void TLC5940_ClockInDC(void) __attribute__(( always_inline ));;
+static inline void TLC5940_ClockInDC(void) __attribute__(( always_inline ));
 static inline void TLC5940_ClockInDC(void) {
   setHigh(DCPRG_PORT, DCPRG_PIN);
   setHigh(VPRG_PORT, VPRG_PIN);
@@ -524,8 +515,8 @@ static        void TLC5940_Set4GS(channel_t channel, uint16_t value) {
 #endif // TLC5940_ENABLE_MULTIPLEXING
 #endif // TLC5940_INCLUDE_SET4_FUNCS
 
-void TLC5940_ClockInGS(void);
 void TLC5940_Init(void);
+void TLC5940_ClockInGS(void);
 
 #if (TLC5940_ISR_CTC_TIMER == 0)
 #define TLC5940_TIMER_COMPA_vect TIMER0_COMPA_vect

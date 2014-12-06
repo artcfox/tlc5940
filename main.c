@@ -20,14 +20,14 @@ int main(void) {
   sei();
 
   for (;;) {
-    for (uint8_t i = 0; i < 15; ++i) {
+    for (channel_t i = 0; i < numChannels; ++i) {
       while(TLC5940_GetGSUpdateFlag()); // wait until we can modify gsData
       TLC5940_SetAllGS(0);
       TLC5940_SetGS(i, 4095);
       TLC5940_SetGSUpdateFlag();
       //_delay_ms(50);
     }
-    for (uint8_t i = 15; i > 0; --i) {
+    for (channel_t i = numChannels - 1; i > 0; --i) {
       while(TLC5940_GetGSUpdateFlag()); // wait until we can modify gsData
       TLC5940_SetAllGS(0);
       TLC5940_SetGS(i, 4095);
