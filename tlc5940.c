@@ -119,17 +119,19 @@ volatile bool gsUpdateFlag;
 
 #if (TLC5940_INCLUDE_GAMMA_CORRECT)
 #if (TLC5940_PWM_BITS == 12)
-#define V 4095.0
+#define V 4095
 #elif (TLC5940_PWM_BITS == 11)
-#define V 2047.0
+#define V 2047
 #elif (TLC5940_PWM_BITS == 10)
-#define V 1023.0
+#define V 1023
 #elif (TLC5940_PWM_BITS == 9)
-#define V 511.0
+#define V 511
 #elif (TLC5940_PWM_BITS == 8)
-#define V 255.0
+#define V 255
+#elif (TLC5940_PWM_BITS == 0)
+#define V (((((uint16_t)(uint8_t)(TLC5940_CTC_TOP)) + 1) * 64) - 1)
 #else
-#error "TLC5940_PWM_BITS must be 8, 9, 10, 11, or 12"
+#error "TLC5940_PWM_BITS must be 0, 8, 9, 10, 11, or 12"
 #endif // TLC5940_PWM_BITS
 // Maps a linear 8-bit value to a TLC5940_PWM_BITS-bit gamma corrected value
 // This array was computer-generated using the following formula:
@@ -206,21 +208,30 @@ const uint16_t TLC5940_GammaCorrect[] PROGMEM = {
 
 #if (TLC5940_PWM_BITS == 12)
 // Generate an interrupt every 4096 clock cycles
-#define TLC5940_CTC_TOP 15
+#define TLC5940_CTC_TOP 63
 #elif (TLC5940_PWM_BITS == 11)
 // Generate an interrupt every 2048 clock cycles
-#define TLC5940_CTC_TOP 7
+#define TLC5940_CTC_TOP 31
 #elif (TLC5940_PWM_BITS == 10)
 // Generate an interrupt every 1024 clock cycles
-#define TLC5940_CTC_TOP 3
+#define TLC5940_CTC_TOP 15
 #elif (TLC5940_PWM_BITS == 9)
 // Generate an interrupt every 512 clock cycles
-#define TLC5940_CTC_TOP 1
+#define TLC5940_CTC_TOP 7
 #elif (TLC5940_PWM_BITS == 8)
 // Generate an interrupt every 256 clock cycles
-#define TLC5940_CTC_TOP 0
+#define TLC5940_CTC_TOP 3
+#elif (TLC5940_PWM_BITS == 0)
+
+#if (TLC5940_CTC_TOP < 3)
+#error "TLC5940_CTC_TOP must be between 3 and 63, inclusive"
+#endif // TLC5940_CTC_TOP
+#if (TLC5940_CTC_TOP > 63)
+#error "TLC5940_CTC_TOP must be between 3 and 63, inclusive"
+#endif // TLC5940_CTC_TOP
+
 #else
-#error "TLC5940_PWM_BITS must be 8, 9, 10, 11, or 12"
+#error "TLC5940_PWM_BITS must be 0, 8, 9, 10, 11, or 12"
 #endif // TLC5940_PWM_BITS
 
 void TLC5940_Init(void) {
@@ -304,9 +315,9 @@ void TLC5940_Init(void) {
 #if (TLC5940_ISR_CTC_TIMER == 0)
   // CTC with OCR0A as TOP
   TCCR0A = (1 << WGM01);
-  // clk_io/256 (From prescaler)
-  TCCR0B = (1 << CS02);
-  // Generate an interrupt every (TLC5940_CTC_TOP + 1) * 256 clock cycles
+  // clk_io/64 (From prescaler)
+  TCCR0B = (1 << CS01) | (1 << CS00);
+  // Generate an interrupt every (TLC5940_CTC_TOP + 1) * 64 clock cycles
   OCR0A = TLC5940_CTC_TOP;
 
   // Enable Timer/Counter0 Compare Match A interrupt
@@ -319,9 +330,9 @@ void TLC5940_Init(void) {
 #elif (TLC5940_ISR_CTC_TIMER == 2)
   // CTC with OCR2A as TOP
   TCCR2A = (1 << WGM21);
-  // clk_io/256 (From prescaler)
-  TCCR2B = (1 << CS22) | (1 << CS21);
-  // Generate an interrupt every (TLC5940_CTC_TOP + 1) * 256 clock cycles
+  // clk_io/64 (From prescaler)
+  TCCR2B = (1 << CS22);
+  // Generate an interrupt every (TLC5940_CTC_TOP + 1) * 64 clock cycles
   OCR2A = TLC5940_CTC_TOP;
   // Enable Timer/Counter2 Compare Match A interrupt
   TIMSK2 |= (1 << OCIE2A);
@@ -434,7 +445,7 @@ bool xlatNeedsPulse;
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
 #if (TLC5940_INCLUDE_DEFAULT_ISR)
-// Interrupt gets called every (TLC5940_CTC_TOP + 1) * 256 clock cycles
+// Interrupt gets called every (TLC5940_CTC_TOP + 1) * 64 clock cycles
 ISR(TLC5940_TIMER_COMPA_vect) {
 #if (TLC5940_ENABLE_MULTIPLEXING)
 
@@ -449,7 +460,7 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   TLC5940_RespectSetupAndHoldTimes();
   MULTIPLEX_INPUT = tmp1; // turn on the next row
   TLC5940_ToggleXLAT_BLANK();
-  // We now have (TLC5940_CTC_TOP + 1) * 256 clocks to send data for next cycle
+  // We now have (TLC5940_CTC_TOP + 1) * 64 clocks to send data for next cycle
 
   // Only page-flip if new data is ready and we finished displaying all rows
   if (TLC5940_GetGSUpdateFlag() && row == 0) {
@@ -480,12 +491,12 @@ ISR(TLC5940_TIMER_COMPA_vect) {
     TLC5940_RespectSetupAndHoldTimes();
     togglePin(BLANK_INPUT, BLANK_PIN); // low
   }
-  // We now have (TLC5940_CTC_TOP + 1) * 256 clocks to send data for next cycle
+  // We now have (TLC5940_CTC_TOP + 1) * 64 clocks to send data for next cycle
 
   if (TLC5940_GetGSUpdateFlag()) {
     for (gsData_t i = 0; i < gsDataSize; i++)
       TLC5940_TX(gsData[i]);
-    TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag(); // faster than separate
+    TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag(); // optimized
   }
 
 #endif // TLC5940_ENABLE_MULTIPLEXING

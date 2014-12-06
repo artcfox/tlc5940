@@ -132,19 +132,45 @@ TLC5940_SPI_MODE = 1
 # TLC5940_INCLUDE_GAMMA_CORRECT = 1 then changing TLC5940_PWM_BITS
 # will automatically rescale the gamma correction table to use the
 # appropriate maximum value, at the expense of precision.
+#
 #  12 = Normal 12-bit PWM mode. Possible output values between 0-4095
 #  11 = 11-bit PWM mode. Possible output values between 0-2047
 #  10 = 10-bit PWM mode. Possible output values between 0-1023
 #   9 =  9-bit PWM mode. Possible output values between 0-511
 #   8 =  8-bit PWM mode. Possible output values between 0-255
+#   0 = Manually assign TLC5940_CTC_TOP below
+#
 # Note: Lowering this value will decrease the amount of time you have
 #       in the ISR to send the TLC5940 updated values, potentially
 #       limiting the number of devices you can connect in series, and
 #       it will decrease the number of cycles available to main(),
 #       since the ISR will be called more often. Lowering this value
-#       will however, reduce flickering and will allow for much
+#       will however, reduce flickering, and will allow for much
 #       quicker updates.
 TLC5940_PWM_BITS = 12
+
+# This setting allows you to directly choose the interrupt interval in
+# steps of 64 clock cycles, if TLC5940_PWM_BITS = 0
+#
+# The interrupt will be called every (TLC5940_CTC_TOP + 1) * 64 clock
+# cycles, and the output values passed to the Set*GS functions must be
+# in the range:
+#     0 through ((TLC5940_CTC_TOP + 1) * 64) - 1
+#
+# Supported values for TCL5940_CTC_TOP range between 3 and 63,
+# inclusive, with 3 being equivalent to 8-bit PWM mode (256 clocks),
+# and 63 being equivalent to 12-bit PWM mode (4096 clocks).
+#
+# Note: Lowering this value will decrease the amount of time you have
+#       in the ISR to send the TLC5940 updated values, potentially
+#       limiting the number of devices you can connect in series, and
+#       it will decrease the number of cycles available to main(),
+#       since the ISR will be called more often. Lowering this value
+#       will however, reduce flickering, and will allow for much
+#       quicker updates.
+ifeq ($(TLC5940_PWM_BITS), 0)
+TLC5940_CTC_TOP = 63
+endif
 
 # Defines which 8-bit Timer is used to generate the interrupt that
 # fires every 2^TLC5940_PWM_BITS clock cycles. Useful if you are
@@ -273,6 +299,10 @@ TLC5940_GPIOR0_DEFINES = -DTLC5940_FLAG_GS_UPDATE=$(TLC5940_FLAG_GS_UPDATE) \
                          -DTLC5940_FLAG_XLAT_NEEDS_PULSE=$(TLC5940_FLAG_XLAT_NEEDS_PULSE)
 endif
 
+ifeq ($(TLC5940_PWM_BITS), 0)
+TLC5940_CTC_TOP_DEFINE = -DTLC5940_CTC_TOP=$(TLC5940_CTC_TOP)
+endif
+
 # This avoids adding needless defines if TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 1
 ifeq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 0)
 VPRG_DCPRG_DEFINES = -DDCPRG_DDR=$(DCPRG_DDR) \
@@ -315,7 +345,7 @@ TLC5940_DEFINES = -DTLC5940_N=$(TLC5940_N) \
                   $(MULTIPLEXING_DEFINES) \
                   -DTLC5940_SPI_MODE=$(TLC5940_SPI_MODE) \
                   -DTLC5940_PWM_BITS=$(TLC5940_PWM_BITS) \
-                  -DTLC5940_ISR_CTC_TIMER=$(TLC5940_ISR_CTC_TIMER) \
+                  $(TLC5940_CTC_TOP_DEFINE) \
                   -DTLC5940_USE_GPIOR0=$(TLC5940_USE_GPIOR0) \
                   -DBLANK_DDR=$(BLANK_DDR) \
                   -DBLANK_PORT=$(BLANK_PORT) \

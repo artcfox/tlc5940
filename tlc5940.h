@@ -267,9 +267,9 @@ do {                                                                         \
 
 #if (TLC5940_INCLUDE_DC_FUNCS)
 #if (12 * TLC5940_N > 255)
-#define dcData_t uint16_t
+typedef uint16_t dcData_t;
 #else
-#define dcData_t uint8_t
+typedef uint8_t dcData_t;
 #endif
 
 #define dcDataSize ((dcData_t)12 * TLC5940_N)
