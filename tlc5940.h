@@ -99,16 +99,24 @@ typedef uint16_t channel3_t;
 typedef uint8_t channel3_t;
 #endif
 
+#define gsDataSize ((gsData_t)24 * TLC5940_N)
+#define numChannels ((channel_t)16 * TLC5940_N)
+
+#if (TLC5940_ENABLE_MULTIPLEXING)
+
+#if (TLC5940_MULTIPLEX_N < 1)
+#error "TLC5940_MULTIPLEX_N must be between 1 and 8, inclusive"
+#endif // TLC5940_MULTIPLEX_N
+#if (TLC5940_MULTIPLEX_N > 8)
+#error "TLC5940_MULTIPLEX_N must be between 1 and 8, inclusive"
+#endif // TLC5940_MULTIPLEX_N
+
 #if (24 * TLC5940_N * TLC5940_MULTIPLEX_N > 255)
 typedef uint16_t gsOffset_t;
 #else
 typedef uint8_t gsOffset_t;
 #endif
 
-#define gsDataSize ((gsData_t)24 * TLC5940_N)
-#define numChannels ((channel_t)16 * TLC5940_N)
-
-#if (TLC5940_ENABLE_MULTIPLEXING)
 extern const uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N];
 extern uint8_t gsData[TLC5940_MULTIPLEX_N][gsDataSize];
 extern uint8_t *pBack;
@@ -514,6 +522,14 @@ static        void TLC5940_Set4GS(channel_t channel, uint16_t value) {
 }
 #endif // TLC5940_ENABLE_MULTIPLEXING
 #endif // TLC5940_INCLUDE_SET4_FUNCS
+
+#if (TLC5940_ENABLE_MULTIPLEXING)
+#if (TLC5940_USE_GPIOR1)
+#define TLC5940_row GPIOR1
+#else // TLC5940_USE_GPIOR1
+extern uint8_t TLC5940_row; // the row we are clocking new data out for
+#endif // TLC5940_USE_GPIOR1
+#endif // TLC5940_ENABLE_MULTIPLEXING
 
 void TLC5940_Init(void);
 void TLC5940_ClockInGS(void);

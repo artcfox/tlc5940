@@ -192,6 +192,19 @@ TLC5940_ISR_CTC_TIMER = 0
 #       application might use.
 TLC5940_USE_GPIOR0 = 1
 
+# TLC5940_USE_GPIOR1 is only defined if TLC5940_ENABLE_MULTIPLEXING = 1
+ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
+# Determines whether or not GPIOR1 is used to store the current
+# multiplexing row. This special-purpose register is faster to access
+# than a variable in RAM. You should definitely use this if you can,
+# as the library will be smaller, faster, and use less RAM.
+#
+# Note: If enabled, you must make sure that no other part of your
+#       application uses the GPIOR1 register for anything
+#       else.
+TLC5940_USE_GPIOR1 = 1
+endif
+
 # GPIOR0 flag bits are only defined if TLC5940_USE_GPIOR0 = 1
 ifeq ($(TLC5940_USE_GPIOR0), 1)
 TLC5940_FLAG_GS_UPDATE = 0
@@ -316,6 +329,7 @@ endif
 # This avoids adding needless defines if TLC5940_ENABLE_MULTIPLEXING = 0
 ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
 MULTIPLEXING_DEFINES = -DTLC5940_MULTIPLEX_N=$(TLC5940_MULTIPLEX_N) \
+                       -DTLC5940_USE_GPIOR1=$(TLC5940_USE_GPIOR1) \
                        -DMULTIPLEX_DDR=$(MULTIPLEX_DDR) \
                        -DMULTIPLEX_PORT=$(MULTIPLEX_PORT) \
                        -DMULTIPLEX_INPUT=$(MULTIPLEX_INPUT) \

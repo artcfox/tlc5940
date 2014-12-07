@@ -234,6 +234,12 @@ const uint16_t TLC5940_GammaCorrect[] PROGMEM = {
 #error "TLC5940_PWM_BITS must be 0, 8, 9, 10, 11, or 12"
 #endif // TLC5940_PWM_BITS
 
+#if (TLC5940_ENABLE_MULTIPLEXING)
+#if (TLC5940_USE_GPIOR1 == 0)
+uint8_t TLC5940_row; // the row we are clocking new data out for
+#endif // TLC5940_USE_GPIOR1
+#endif // TLC5940_ENABLE_MULTIPLEXING
+
 void TLC5940_Init(void) {
   setOutput(SCLK_DDR, SCLK_PIN);
   setLow(SCLK_PORT, SCLK_PIN);
@@ -258,6 +264,7 @@ void TLC5940_Init(void) {
   TLC5940_SetGSUpdateFlag();
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
+  TLC5940_row = 0;
   // Set multiplex pins as outputs, and turn all multiplexing MOSFETs off
   setHigh(MULTIPLEX_PORT, ROW0_PIN);
   setOutput(MULTIPLEX_DDR, ROW0_PIN);
@@ -450,8 +457,7 @@ ISR(TLC5940_TIMER_COMPA_vect) {
 #if (TLC5940_ENABLE_MULTIPLEXING)
 
   static uint8_t *pFront = &gsData[0][0]; // read pointer
-  static uint8_t row; // the row we are clocking new data out for
-  const uint8_t *p = toggleRows + row; // force efficient use of Z-pointer
+  const uint8_t *p = toggleRows + TLC5940_row; // force efficient use of Z-pointer
   uint8_t tmp1 = *p;
   uint8_t tmp2 = *(p + TLC5940_MULTIPLEX_N);
 
@@ -463,7 +469,7 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   // We now have (TLC5940_CTC_TOP + 1) * 64 clocks to send data for next cycle
 
   // Only page-flip if new data is ready and we finished displaying all rows
-  if (TLC5940_GetGSUpdateFlag() && row == 0) {
+  if (TLC5940_GetGSUpdateFlag() && TLC5940_row == 0) {
     uint8_t *tmp = pFront;
     pFront = pBack;
     pBack = tmp;
@@ -471,13 +477,18 @@ ISR(TLC5940_TIMER_COMPA_vect) {
     __asm__ volatile ("" ::: "memory"); // ensure pBack gets re-read
   }
 
-  gsOffset_t offset = (gsOffset_t)gsDataSize * row;
+  gsOffset_t offset = (gsOffset_t)gsDataSize * TLC5940_row;
   gsData_t i = gsDataSize + 1;
   while (--i) // loop over gsData[row][i] or gsDataCache[row][i]
     TLC5940_TX(*(pFront + offset++));
 
-  if (++row == TLC5940_MULTIPLEX_N)
-    row = 0;
+  // Advance the row in the most efficient way
+#if ((TLC5940_MULTIPLEX_N & (TLC5940_MULTIPLEX_N - 1)) == 0)
+  TLC5940_row = (TLC5940_row + 1) & (TLC5940_MULTIPLEX_N - 1);
+#else // TLC5940_MULTIPLEX_N
+  if (++TLC5940_row == TLC5940_MULTIPLEX_N)
+    TLC5940_row = 0;
+#endif // TLC5940_MULTIPLEX_N
 
 #else // TLC5940_ENABLE_MULTIPLEXING
 
