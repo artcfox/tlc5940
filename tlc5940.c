@@ -257,7 +257,11 @@ void TLC5940_Init(void) {
   setOutput(BLANK_DDR, BLANK_PIN);
 
   setOutput(SIN_DDR, SIN_PIN);
-#if (TLC5940_SPI_MODE == 2)
+#if (TLC5940_SPI_MODE == 0)
+#if (TLC5940_PB2_UNMAPPED == 1)
+  setOutput(PORTB, PB2); // PB2 must be an output to remain in SPI Master Mode
+#endif
+#elif (TLC5940_SPI_MODE == 2)
   setLow(SIN_PORT, SIN_PIN); // since USI only toggles, start in known state
 #endif // TLC5940_SPI_MODE
 

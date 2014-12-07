@@ -328,19 +328,58 @@ endif
 
 # This avoids adding needless defines if TLC5940_ENABLE_MULTIPLEXING = 0
 ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
-MULTIPLEXING_DEFINES = -DTLC5940_MULTIPLEX_N=$(TLC5940_MULTIPLEX_N) \
-                       -DTLC5940_USE_GPIOR1=$(TLC5940_USE_GPIOR1) \
-                       -DMULTIPLEX_DDR=$(MULTIPLEX_DDR) \
-                       -DMULTIPLEX_PORT=$(MULTIPLEX_PORT) \
-                       -DMULTIPLEX_INPUT=$(MULTIPLEX_INPUT) \
-                       -DROW0_PIN=$(ROW0_PIN) \
-                       -DROW1_PIN=$(ROW1_PIN) \
-                       -DROW2_PIN=$(ROW2_PIN) \
-                       -DROW3_PIN=$(ROW3_PIN) \
-                       -DROW4_PIN=$(ROW4_PIN) \
-                       -DROW5_PIN=$(ROW5_PIN) \
-                       -DROW6_PIN=$(ROW6_PIN) \
-                       -DROW7_PIN=$(ROW7_PIN)
+TLC5940_MULTIPLEXING_DEFINES = -DTLC5940_MULTIPLEX_N=$(TLC5940_MULTIPLEX_N) \
+                               -DTLC5940_USE_GPIOR1=$(TLC5940_USE_GPIOR1) \
+                               -DMULTIPLEX_DDR=$(MULTIPLEX_DDR) \
+                               -DMULTIPLEX_PORT=$(MULTIPLEX_PORT) \
+                               -DMULTIPLEX_INPUT=$(MULTIPLEX_INPUT) \
+                               -DROW0_PIN=$(ROW0_PIN) \
+                               -DROW1_PIN=$(ROW1_PIN) \
+                               -DROW2_PIN=$(ROW2_PIN) \
+                               -DROW3_PIN=$(ROW3_PIN) \
+                               -DROW4_PIN=$(ROW4_PIN) \
+                               -DROW5_PIN=$(ROW5_PIN) \
+                               -DROW6_PIN=$(ROW6_PIN) \
+                               -DROW7_PIN=$(ROW7_PIN)
+endif
+
+ifeq ($(TLC5940_SPI_MODE), 0)
+$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ PB4 WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
+$(warning @ The pin PB4 will automatically be set as an input pin by the Master)
+$(warning @ SPI hardware, because TLC5940_SPI_MODE = 0.)
+$(warning @)
+$(warning @ This is a hardware override, and thus cannot be avoided, but you)
+$(warning @ should be able to use PB4 as an input for something else in your)
+$(warning @ application, because the library does not actually receive data on this)
+$(warning @ pin.)
+$(warning @)
+$(warning @ This warning will remain as long as TLC5940_SPI_MODE = 0.)
+$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ PB4 WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
+ifneq ($(BLANK_PIN), PB2)
+ifneq ($(XLAT_PIN), PB2)
+ifneq ($(DCPRG_PIN), PB2)
+ifneq ($(VPRG_PIN), PB2)
+TLC5940_PB2_UNMAPPED = 1
+$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ PB2 WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
+$(warning @ TLC5940_SPI_MODE = 0, but no pin from this library is mapped to PB2!)
+$(warning @)
+$(warning @ This is allowed, but the library must still set PB2 as an output pin)
+$(warning @ to remain in Master SPI mode (read: functional).)
+$(warning @)
+$(warning @ It is strongly recommended that you map either BLANK, XLAT, DCPRG, or)
+$(warning @ VPRG to PB2 to avoid an accidental short.)
+$(warning @)
+$(warning @ You may also map something else in your project to PB2, as long)
+$(warning @ as it is only ever used as an output pin, but this warning will remain.)
+$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ PB2 WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
+endif
+endif
+endif
+endif
+endif
+
+ifeq ($(TLC5940_PB2_UNMAPPED), 1)
+TLC5940_PB2_UNMAPPED_DEFINE = -DTLC5940_PB2_UNMAPPED=$(TLC5940_PB2_UNMAPPED)
 endif
 
 # This line integrates all options into a single flag called:
@@ -356,7 +395,7 @@ TLC5940_DEFINES = -DTLC5940_N=$(TLC5940_N) \
                   -DTLC5940_INLINE_SETGS_FUNCS=$(TLC5940_INLINE_SETGS_FUNCS) \
                   -DTLC5940_ENABLE_MULTIPLEXING=$(TLC5940_ENABLE_MULTIPLEXING) \
                   -DMULTIPLEX_AND_XLAT_SHARE_PORT=$(MULTIPLEX_AND_XLAT_SHARE_PORT) \
-                  $(MULTIPLEXING_DEFINES) \
+                  $(TLC5940_MULTIPLEXING_DEFINES) \
                   -DTLC5940_SPI_MODE=$(TLC5940_SPI_MODE) \
                   -DTLC5940_PWM_BITS=$(TLC5940_PWM_BITS) \
                   $(TLC5940_CTC_TOP_DEFINE) \
@@ -372,18 +411,6 @@ TLC5940_DEFINES = -DTLC5940_N=$(TLC5940_N) \
                   -DXLAT_PORT=$(XLAT_PORT) \
                   -DXLAT_INPUT=$(XLAT_INPUT) \
                   -DXLAT_PIN=$(XLAT_PIN) \
-                  -DBLANK_AND_XLAT_SHARE_PORT=$(BLANK_AND_XLAT_SHARE_PORT)
+                  -DBLANK_AND_XLAT_SHARE_PORT=$(BLANK_AND_XLAT_SHARE_PORT) \
+                  $(TLC5940_PB2_UNMAPPED_DEFINE)
 
-ifeq ($(TLC5940_SPI_MODE), 0)
-ifneq ($(BLANK_PIN), PB2)
-$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
-$(warning @ TLC5940_SPI_MODE = 0, and you remapped the BLANK_PIN! This is now)
-$(warning @ allowed, but PB2 will still be set (and must remain!) an output pin.)
-$(warning @)
-$(warning @ You may still use the PB2 pin for something else in your project,)
-$(warning @ but remember that the TLC5940_Init() function, will unconditionally set)
-$(warning @ PB2 as an output pin, and it must remain an output pin, or the TLC5940)
-$(warning @ library will not work properly.)
-$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
-endif
-endif
