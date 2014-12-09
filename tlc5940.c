@@ -45,8 +45,9 @@ uint8_t *pBack;
 // then we don't need to toggle XLAT separately, we can toggle XLAT
 // during the same clock cycle that we toggle the MOSFET pins. If BLANK
 // also shares the same PORT, then we can toggle BLANK during that same
-// clock cycle as well. We also need to be careful not to violate the
-// setup and hold times as described in the datasheet.
+// clock cycle as well. If BLANK is hardwired to XLAT, then we only need
+// to toggle XLAT. We also need to be careful not to violate the setup
+// and hold times as described in the datasheet.
 #if (MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
 #if (BLANK_AND_XLAT_SHARE_PORT == 1)
 #if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 1)
@@ -61,7 +62,13 @@ uint8_t *pBack;
 #define TLC5940_TR_EXTRAS 0
 #endif // MULTIPLEX_AND_XLAT_SHARE_PORT
 
-// The toggleRows array now starts on the second to last channel
+// The toggleRows array is now automatically populated, and we start
+// multiplexing on the second to last row so the ISR doesn't need to
+// have logic for dealing with a first cycle flag, or logic for whether
+// or not to pulse XLAT. No outputs will be enabled until the ISR advances
+// to the first multiplexing row, at which point, the GS data that the
+// user-defined main() code sets right before calling TLC5940_ClockInGS()
+// is displayed
 const uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N] = {
 #if (TLC5940_MULTIPLEX_N == 1)
   (1 << ROW0_PIN) | TLC5940_TR_EXTRAS,

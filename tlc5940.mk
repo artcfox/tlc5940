@@ -123,13 +123,13 @@ TLC5940_MULTIPLEX_N = 3
 # When multiplexing, you don't actually need to run a separate wire to
 # the BLANK pin of the TLC5940, as long as you connect its BLANK and
 # XLAT pins together. The multiplexing MOSFETs will keep the LEDs off
-# during initialization, and so no garbage will ever be displayed. You
+# during initialization, so no garbage will ever be displayed. You
 # still need to connect a 10K pullup resistor between the shared
 # XLAT/BLANK and VCC, as the datasheet mandates this for the BLANK
 # pin.
 #
 # WARNING: Before you change this option, you must wire the chip up
-#          differently, and/or switch chips!
+#          differently!
 TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER = 1
 endif
 
@@ -198,17 +198,17 @@ TLC5940_PWM_BITS = 12
 #       limiting the number of devices you can connect in series, and
 #       it will decrease the number of cycles available to main(),
 #       since the ISR will be called more often. Lowering this value
-#       will however, reduce flickering, and will allow for much
-#       quicker updates.
+#       will however, reduce flickering, and will allow for quicker
+#       updates.
 ifeq ($(TLC5940_PWM_BITS), 0)
 TLC5940_CTC_TOP = 63
 endif
 
 # Defines which 8-bit Timer is used to generate the interrupt that
-# fires every 2^TLC5940_PWM_BITS clock cycles. Useful if you are
-# already using a timer for something else, or if you wish to use a
-# particular PWM pin to generate a GSCLK signal instead of using CLKO
-# pin for driving GSCLK.
+# fires every 2^TLC5940_PWM_BITS (or (TLC5940_CTC_TOP + 1) * 64) clock
+# cycles. Useful if you are already using a timer for something else,
+# or if you wish to use a particular PWM pin to generate a GSCLK
+# signal instead of using CLKO pin for driving GSCLK.
 #  0 = 8-bit Timer/Counter0
 #  2 = 8-bit Timer/Counter2
 TLC5940_ISR_CTC_TIMER = 0
@@ -330,7 +330,7 @@ endif
 
 # ---------- DO NOT MODIFY BELOW THIS LINE ----------
 
-# Assign sane defaults, if variables have not been set
+# Assign sane defaults, if these variables have not been set
 TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND ?= 0
 TLC5940_DCPRG_HARDWIRED_TO_VCC ?= 0
 TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER ?= 0
