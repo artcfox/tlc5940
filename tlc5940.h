@@ -217,7 +217,11 @@ static inline void TLC5940_ToggleBLANK_XLAT(void) {
   togglePin(BLANK_INPUT, BLANK_PIN); // high
   // The toggling of XLAT is embedded in the const definition of toggleRows
 #elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+#if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 1)
+  XLAT_INPUT = (1 << XLAT_PIN); // set shared XLAT/BLANK pin high
+#else // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
   BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // both high at once
+#endif // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
 #elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
   // The toggling of BLANK is embedded in the const definition of toggleRows
   // The toggling of XLAT is embedded in the const definition of toggleRows
@@ -234,7 +238,11 @@ static inline void TLC5940_ToggleXLAT_BLANK(void) {
   // The toggling of XLAT is embedded in the const definition of toggleRows
   togglePin(BLANK_INPUT, BLANK_PIN); // low
 #elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+#if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 1)
+  XLAT_INPUT = (1 << XLAT_PIN); // set shared XLAT/BLANK pin low
+#else // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
   BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // both low at once
+#endif // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
 #elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
   // The toggling of XLAT is embedded in the const definition of toggleRows
   // The toggling of BLANK is embedded in the const definition of toggleRows
@@ -372,7 +380,9 @@ static        void TLC5940_Set4DC(channel_t channel, uint8_t value) {
 
 static inline void TLC5940_ClockInDC(void) __attribute__(( always_inline ));
 static inline void TLC5940_ClockInDC(void) {
+#if (TLC5940_DCPRG_HARDWIRED_TO_VCC == 0)
   setHigh(DCPRG_PORT, DCPRG_PIN);
+#endif // TLC5940_DCPRG_HARDWIRED_TO_VCC
   setHigh(VPRG_PORT, VPRG_PIN);
 
 #if (TLC5940_ENABLE_MULTIPLEXING == 0)

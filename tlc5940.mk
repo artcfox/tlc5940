@@ -9,8 +9,11 @@ TLC5940_N = 1
 #      default)
 TLC5940_INCLUDE_DC_FUNCS = 0
 
-# Flag for whether VPRG and DCPRG are hardwired to GND (uses two less
-# pins, but dot correction values will always be read from EEPROM).
+# TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND is only defined if
+# TLC5940_INCLUDE_DC_FUNCS = 0
+# Flag for whether the VPRG and DCPRG pins on the TLC5940 are
+# hardwired to GND (uses two less pins, but dot correction values will
+# always be read from EEPROM).
 #  0 = The VPRG and DCPRG pins must be defined on the AVR and
 #      connected to the corresponding pins on the TLC5940.
 #  1 = The VPRG and DCPRG inputs on the TLC5940 must be hardwired to
@@ -19,7 +22,22 @@ TLC5940_INCLUDE_DC_FUNCS = 0
 #
 # WARNING: Before you enable this option, you must wire the chip up
 #          differently!
+ifeq ($(TLC5940_INCLUDE_DC_FUNCS), 0)
 TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 1
+endif
+
+# TLC5940_DCPRG_HARDWIRED_TO_VCC is only defined if
+# TLC5940_INCLUDE_DC_FUNCS = 1
+# Flag for whether the DCPRG pin on the TLC5940 is hardwired to VCC
+# (uses one less pin, but dot correction values will always need to be
+# sent manually using the TLC5940_Set*DC family of functions). Also
+# useful for driving a TLC5944, which does not have a DCPRG pin.
+#
+# WARNING: Before you enable this option, you must wire the chip up
+#          differently!
+ifeq ($(TLC5940_INCLUDE_DC_FUNCS), 1)
+TLC5940_DCPRG_HARDWIRED_TO_VCC = 1
+endif
 
 # Flag for including efficient functions for setting the grayscale
 # (and optionally dot correction) values of four channels at once.
@@ -99,6 +117,20 @@ ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
 #       be multiplexed is eight.  This option is ignored if
 #       TLC5940_ENABLE_MULTIPLEXING = 0
 TLC5940_MULTIPLEX_N = 3
+
+# TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER is only defined if
+# TLC5940_ENABLE_MULTIPLEXING = 1
+# When multiplexing, you don't actually need to run a separate wire to
+# the BLANK pin of the TLC5940, as long as you connect its BLANK and
+# XLAT pins together. The multiplexing MOSFETs will keep the LEDs off
+# during initialization, and so no garbage will ever be displayed. You
+# still need to connect a 10K pullup resistor between the shared
+# XLAT/BLANK and VCC, as the datasheet mandates this for the BLANK
+# pin.
+#
+# WARNING: Before you change this option, you must wire the chip up
+#          differently, and/or switch chips!
+TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER = 1
 endif
 
 # Setting to select among, Normal SPI Master mode, USART in MSPIM
@@ -226,10 +258,19 @@ endif
 #
 # Note: The library is extra-optimized when BLANK and XLAT are
 #       configured to be pins from the same PORT.
+#
+# Super-optimization: When TLC5940_ENABLE_MULTIPLEXING = 1, you don't
+# even need to use a pin to drive BLANK, if you hardwire the BLANK and
+# XLAT pins on the TLC5940 together and set the
+# TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER flag above. Note, you'll
+# still need to use an external 10K pullup resistor on the shared
+# XLAT/BLANK line.
+ifneq ($(TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER), 1)
 BLANK_DDR = DDRB
 BLANK_PORT = PORTB
 BLANK_INPUT = PINB
 BLANK_PIN = PB3
+endif
 
 # DDR, PORT, and PIN connected to XLAT (always configurable)
 #
@@ -241,11 +282,14 @@ XLAT_INPUT = PINB
 XLAT_PIN = PB0
 
 # VPRG and DCPRG are only defined if TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 0
-ifeq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 0)
+ifneq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 1)
+# DCPRG is only defined if TLC5940_DCPRG_HARDWIRED_TO_VCC = 0
+ifneq ($(TLC5940_DCPRG_HARDWIRED_TO_VCC), 1)
 # DDR, PORT, and PIN connected to DCPRG
 DCPRG_DDR = DDRD
 DCPRG_PORT = PORTD
 DCPRG_PIN = PD3
+endif
 
 # DDR, PORT, and PIN connected to VPRG
 VPRG_DDR = DDRD
@@ -286,6 +330,11 @@ endif
 
 # ---------- DO NOT MODIFY BELOW THIS LINE ----------
 
+# Assign sane defaults, if variables have not been set
+TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND ?= 0
+TLC5940_DCPRG_HARDWIRED_TO_VCC ?= 0
+TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER ?= 0
+
 # These following chunk of defines are what allow the library to
 # automatically determine which extra optimizations can be enabled
 # when certain pins share the same PORT. These comparisons needed to
@@ -295,6 +344,9 @@ ifeq ($(BLANK_INPUT), $(XLAT_INPUT))
 BLANK_AND_XLAT_SHARE_PORT = 1
 else
 BLANK_AND_XLAT_SHARE_PORT = 0
+endif
+ifeq ($(TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER), 1)
+BLANK_AND_XLAT_SHARE_PORT = 1
 endif
 ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
 ifeq ($(MULTIPLEX_INPUT), $(XLAT_INPUT))
@@ -316,31 +368,84 @@ ifeq ($(TLC5940_PWM_BITS), 0)
 TLC5940_CTC_TOP_DEFINE = -DTLC5940_CTC_TOP=$(TLC5940_CTC_TOP)
 endif
 
+ifeq ($(TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER), 0)
+BLANK_DEFINES = -DBLANK_DDR=$(BLANK_DDR) \
+                -DBLANK_PORT=$(BLANK_PORT) \
+                -DBLANK_INPUT=$(BLANK_INPUT) \
+                -DBLANK_PIN=$(BLANK_PIN)
+endif
+
 # This avoids adding needless defines if TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 1
 ifeq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 0)
-VPRG_DCPRG_DEFINES = -DDCPRG_DDR=$(DCPRG_DDR) \
-                     -DDCPRG_PORT=$(DCPRG_PORT) \
-                     -DDCPRG_PIN=$(DCPRG_PIN) \
-                     -DVPRG_DDR=$(VPRG_DDR) \
-                     -DVPRG_PORT=$(VPRG_PORT) \
-                     -DVPRG_PIN=$(VPRG_PIN)
+VPRG_DEFINES = -DVPRG_DDR=$(VPRG_DDR) \
+               -DVPRG_PORT=$(VPRG_PORT) \
+               -DVPRG_PIN=$(VPRG_PIN)
+endif
+
+# This avoids adding needless defines if TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 1
+# or if TLC5940_DCPRG_HARDWIRED_TO_VCC = 1
+ifeq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 0)
+ifeq ($(TLC5940_DCPRG_HARDWIRED_TO_VCC), 0)
+DCPRG_DEFINES = -DDCPRG_DDR=$(DCPRG_DDR) \
+                -DDCPRG_PORT=$(DCPRG_PORT) \
+                -DDCPRG_PIN=$(DCPRG_PIN)
+endif
 endif
 
 # This avoids adding needless defines if TLC5940_ENABLE_MULTIPLEXING = 0
 ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
-MULTIPLEXING_DEFINES = -DTLC5940_MULTIPLEX_N=$(TLC5940_MULTIPLEX_N) \
-                       -DTLC5940_USE_GPIOR1=$(TLC5940_USE_GPIOR1) \
-                       -DMULTIPLEX_DDR=$(MULTIPLEX_DDR) \
-                       -DMULTIPLEX_PORT=$(MULTIPLEX_PORT) \
-                       -DMULTIPLEX_INPUT=$(MULTIPLEX_INPUT) \
-                       -DROW0_PIN=$(ROW0_PIN) \
-                       -DROW1_PIN=$(ROW1_PIN) \
-                       -DROW2_PIN=$(ROW2_PIN) \
-                       -DROW3_PIN=$(ROW3_PIN) \
-                       -DROW4_PIN=$(ROW4_PIN) \
-                       -DROW5_PIN=$(ROW5_PIN) \
-                       -DROW6_PIN=$(ROW6_PIN) \
-                       -DROW7_PIN=$(ROW7_PIN)
+TLC5940_MULTIPLEXING_DEFINES = -DTLC5940_MULTIPLEX_N=$(TLC5940_MULTIPLEX_N) \
+                               -DTLC5940_USE_GPIOR1=$(TLC5940_USE_GPIOR1) \
+                               -DMULTIPLEX_DDR=$(MULTIPLEX_DDR) \
+                               -DMULTIPLEX_PORT=$(MULTIPLEX_PORT) \
+                               -DMULTIPLEX_INPUT=$(MULTIPLEX_INPUT) \
+                               -DROW0_PIN=$(ROW0_PIN) \
+                               -DROW1_PIN=$(ROW1_PIN) \
+                               -DROW2_PIN=$(ROW2_PIN) \
+                               -DROW3_PIN=$(ROW3_PIN) \
+                               -DROW4_PIN=$(ROW4_PIN) \
+                               -DROW5_PIN=$(ROW5_PIN) \
+                               -DROW6_PIN=$(ROW6_PIN) \
+                               -DROW7_PIN=$(ROW7_PIN)
+endif
+
+ifeq ($(TLC5940_SPI_MODE), 0)
+$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ PB4 WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
+$(warning @ The pin PB4 will automatically be set as an input pin by the Master)
+$(warning @ SPI hardware, because TLC5940_SPI_MODE = 0.)
+$(warning @)
+$(warning @ This is a hardware override, and thus cannot be avoided, but you)
+$(warning @ should be able to use PB4 as an input for something else in your)
+$(warning @ application, because the library does not actually receive data on this)
+$(warning @ pin.)
+$(warning @)
+$(warning @ This warning will remain as long as TLC5940_SPI_MODE = 0.)
+$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ PB4 WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
+ifneq ($(BLANK_PIN), PB2)
+ifneq ($(XLAT_PIN), PB2)
+ifneq ($(DCPRG_PIN), PB2)
+ifneq ($(VPRG_PIN), PB2)
+TLC5940_PB2_UNMAPPED = 1
+$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ PB2 WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
+$(warning @ TLC5940_SPI_MODE = 0, but no pin from this library is mapped to PB2!)
+$(warning @)
+$(warning @ This is allowed, but the library must still set PB2 as an output pin)
+$(warning @ to remain in Master SPI mode (read: functional).)
+$(warning @)
+$(warning @ It is strongly recommended that you map either BLANK, XLAT, DCPRG, or)
+$(warning @ VPRG to PB2 to avoid an accidental short.)
+$(warning @)
+$(warning @ You may also map something else in your project to PB2, as long)
+$(warning @ as it is only ever used as an output pin, but this warning will remain.)
+$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ PB2 WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
+endif
+endif
+endif
+endif
+endif
+
+ifeq ($(TLC5940_PB2_UNMAPPED), 1)
+TLC5940_PB2_UNMAPPED_DEFINE = -DTLC5940_PB2_UNMAPPED=$(TLC5940_PB2_UNMAPPED)
 endif
 
 # This line integrates all options into a single flag called:
@@ -349,6 +454,7 @@ endif
 TLC5940_DEFINES = -DTLC5940_N=$(TLC5940_N) \
                   -DTLC5940_INCLUDE_DC_FUNCS=$(TLC5940_INCLUDE_DC_FUNCS) \
                   -DTLC5940_VPRG_DCPRG_HARDWIRED_TO_GND=$(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND) \
+                  -DTLC5940_DCPRG_HARDWIRED_TO_VCC=$(TLC5940_DCPRG_HARDWIRED_TO_VCC) \
                   -DTLC5940_INCLUDE_SET4_FUNCS=$(TLC5940_INCLUDE_SET4_FUNCS) \
                   -DTLC5940_INCLUDE_DEFAULT_ISR=$(TLC5940_INCLUDE_DEFAULT_ISR) \
                   -DTLC5940_INCLUDE_GAMMA_CORRECT=$(TLC5940_INCLUDE_GAMMA_CORRECT) \
@@ -356,34 +462,20 @@ TLC5940_DEFINES = -DTLC5940_N=$(TLC5940_N) \
                   -DTLC5940_INLINE_SETGS_FUNCS=$(TLC5940_INLINE_SETGS_FUNCS) \
                   -DTLC5940_ENABLE_MULTIPLEXING=$(TLC5940_ENABLE_MULTIPLEXING) \
                   -DMULTIPLEX_AND_XLAT_SHARE_PORT=$(MULTIPLEX_AND_XLAT_SHARE_PORT) \
-                  $(MULTIPLEXING_DEFINES) \
+                  $(TLC5940_MULTIPLEXING_DEFINES) \
                   -DTLC5940_SPI_MODE=$(TLC5940_SPI_MODE) \
                   -DTLC5940_PWM_BITS=$(TLC5940_PWM_BITS) \
                   $(TLC5940_CTC_TOP_DEFINE) \
                   -DTLC5940_USE_GPIOR0=$(TLC5940_USE_GPIOR0) \
-                  -DBLANK_DDR=$(BLANK_DDR) \
-                  -DBLANK_PORT=$(BLANK_PORT) \
-                  -DBLANK_INPUT=$(BLANK_INPUT) \
-                  -DBLANK_PIN=$(BLANK_PIN) \
                   $(BLANK_DEFINES) \
-                  $(VPRG_DCPRG_DEFINES) \
+                  $(VPRG_DEFINES) \
+                  $(DCPRG_DEFINES) \
                   $(TLC5940_GPIOR0_DEFINES) \
                   -DXLAT_DDR=$(XLAT_DDR) \
                   -DXLAT_PORT=$(XLAT_PORT) \
                   -DXLAT_INPUT=$(XLAT_INPUT) \
                   -DXLAT_PIN=$(XLAT_PIN) \
-                  -DBLANK_AND_XLAT_SHARE_PORT=$(BLANK_AND_XLAT_SHARE_PORT)
+                  -DBLANK_AND_XLAT_SHARE_PORT=$(BLANK_AND_XLAT_SHARE_PORT) \
+                  -DTLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER=$(TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER) \
+                  $(TLC5940_PB2_UNMAPPED_DEFINE)
 
-ifeq ($(TLC5940_SPI_MODE), 0)
-ifneq ($(BLANK_PIN), PB2)
-$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
-$(warning @ TLC5940_SPI_MODE = 0, and you remapped the BLANK_PIN! This is now)
-$(warning @ allowed, but PB2 will still be set (and must remain!) an output pin.)
-$(warning @)
-$(warning @ You may still use the PB2 pin for something else in your project,)
-$(warning @ but remember that the TLC5940_Init() function, will unconditionally set)
-$(warning @ PB2 as an output pin, and it must remain an output pin, or the TLC5940)
-$(warning @ library will not work properly.)
-$(warning @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ WARNING @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@)
-endif
-endif

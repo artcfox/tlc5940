@@ -49,7 +49,11 @@ uint8_t *pBack;
 // setup and hold times as described in the datasheet.
 #if (MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
 #if (BLANK_AND_XLAT_SHARE_PORT == 1)
+#if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 1)
+#define TLC5940_TR_EXTRAS (1 << XLAT_PIN)
+#else // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
 #define TLC5940_TR_EXTRAS ((1 << BLANK_PIN) | (1 << XLAT_PIN))
+#endif // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
 #else // BLANK_AND_XLAT_SHARE_PORT
 #define TLC5940_TR_EXTRAS (1 << XLAT_PIN)
 #endif // BLANK_AND_XLAT_SHARE_PORT
@@ -244,31 +248,15 @@ void TLC5940_Init(void) {
   setOutput(SCLK_DDR, SCLK_PIN);
   setLow(SCLK_PORT, SCLK_PIN);
 #if (TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND == 0)
+#if (TLC5940_DCPRG_HARDWIRED_TO_VCC == 0)
   setOutput(DCPRG_DDR, DCPRG_PIN);
   setLow(DCPRG_PORT, DCPRG_PIN);
+#endif // TLC5940_DCPRG_HARDWIRED_TO_VCC
   setOutput(VPRG_DDR, VPRG_PIN);
   setHigh(VPRG_PORT, VPRG_PIN);
 #endif // TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND
-  setOutput(XLAT_DDR, XLAT_PIN);
-  setLow(XLAT_PORT, XLAT_PIN);
-
-  // setHigh called first to ensure BLANK doesn't briefly go low
-  setHigh(BLANK_PORT, BLANK_PIN);
-  setOutput(BLANK_DDR, BLANK_PIN);
-
-  setOutput(SIN_DDR, SIN_PIN);
-#if (TLC5940_SPI_MODE == 0)
-#if (TLC5940_PB2_UNMAPPED == 1)
-  setOutput(PORTB, PB2); // PB2 must be an output to remain in SPI Master Mode
-#endif
-#elif (TLC5940_SPI_MODE == 2)
-  setLow(SIN_PORT, SIN_PIN); // since USI only toggles, start in known state
-#endif // TLC5940_SPI_MODE
-
-  TLC5940_SetGSUpdateFlag();
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
-  TLC5940_row = 0;
   // Set multiplex pins as outputs, and turn all multiplexing MOSFETs off
   setHigh(MULTIPLEX_PORT, ROW0_PIN);
   setOutput(MULTIPLEX_DDR, ROW0_PIN);
@@ -301,11 +289,36 @@ void TLC5940_Init(void) {
   setOutput(MULTIPLEX_DDR, ROW7_PIN);
 #endif // TLC5940_MULTIPLEX_N
 
+  TLC5940_row = 0; // set this to a known state, since it might be GPIOR1
   // Initialize the write pointer for page-flipping
   pBack = &gsDataCache[0][0];
 #else // TLC5940_ENABLE_MULTIPLEXING
   TLC5940_ClearXLATNeedsPulseFlag();
 #endif // TLC5940_ENABLE_MULTIPLEXING
+
+  setOutput(XLAT_DDR, XLAT_PIN);
+  setLow(XLAT_PORT, XLAT_PIN);
+
+  // If XLAT and BLANK are hardwired together, then setting XLAT low above
+  // would normally make the outputs display garbage, but since the MOSFETs
+  // are all turned off, no garbage will be displayed when the shared
+  // XLAT/BLANK line goes low.
+#if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 0)
+  // setHigh called first to ensure BLANK doesn't briefly go low
+  setHigh(BLANK_PORT, BLANK_PIN);
+  setOutput(BLANK_DDR, BLANK_PIN);
+#endif // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
+
+  setOutput(SIN_DDR, SIN_PIN);
+#if (TLC5940_SPI_MODE == 0)
+#if (TLC5940_PB2_UNMAPPED == 1)
+  setOutput(PORTB, PB2); // PB2 must be an output to remain in SPI Master Mode
+#endif
+#elif (TLC5940_SPI_MODE == 2)
+  setLow(SIN_PORT, SIN_PIN); // since USI only toggles, start in known state
+#endif // TLC5940_SPI_MODE
+
+  TLC5940_SetGSUpdateFlag();
 
 #if (TLC5940_SPI_MODE == 0)
   // Enable SPI, Master, set clock rate fck/2
@@ -445,8 +458,10 @@ void TLC5940_ClockInGS(void) {
 
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
+#if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 0)
   // Set BLANK low, so the ISR can do a toggle, which is quicker
   setLow(BLANK_PORT, BLANK_PIN);
+#endif // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
 }
 
 #if (TLC5940_ENABLE_MULTIPLEXING == 0)
