@@ -39,6 +39,7 @@
 #if (TLC5940_INCLUDE_GAMMA_CORRECT)
 #include <avr/pgmspace.h>
 extern const uint16_t TLC5940_GammaCorrect[] PROGMEM;
+#define TLC5940_GammaCorrect(value) (pgm_read_word(&TLC5940_GammaCorrect[(value)]))
 #endif // TLC5940_INCLUDE_GAMMA_CORRECT
 
 // These options are not configurable because they rely on specific hardware
@@ -99,8 +100,8 @@ typedef uint16_t channel3_t;
 typedef uint8_t channel3_t;
 #endif
 
-#define gsDataSize ((gsData_t)24 * TLC5940_N)
-#define numChannels ((channel_t)16 * TLC5940_N)
+#define TLC5940_GRAYSCALE_BYTES ((gsData_t)24 * TLC5940_N)
+#define TLC5940_CHANNELS_N ((channel_t)16 * TLC5940_N)
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
 
@@ -118,10 +119,10 @@ typedef uint8_t gsOffset_t;
 #endif
 
 extern const uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N];
-extern uint8_t gsData[TLC5940_MULTIPLEX_N][gsDataSize];
+extern uint8_t gsData[TLC5940_MULTIPLEX_N][TLC5940_GRAYSCALE_BYTES];
 extern uint8_t *pBack;
 #else // TLC5940_ENABLE_MULTIPLEXING
-extern uint8_t gsData[gsDataSize];
+extern uint8_t gsData[TLC5940_GRAYSCALE_BYTES];
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
 #if (TLC5940_USE_GPIOR0)
@@ -288,7 +289,7 @@ typedef uint16_t dcData_t;
 typedef uint8_t dcData_t;
 #endif
 
-#define dcDataSize ((dcData_t)12 * TLC5940_N)
+#define TLC5940_DOT_CORRECTION_BYTES ((dcData_t)12 * TLC5940_N)
 
 #if (TLC5940_INLINE_SETDC_FUNCS)
 static inline void TLC5940_SetDC(channel_t channel, uint8_t value) __attribute__(( always_inline ));
@@ -297,7 +298,7 @@ static inline void TLC5940_SetDC(channel_t channel, uint8_t value) {
 static        void TLC5940_SetDC(channel_t channel, uint8_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_SetDC(channel_t channel, uint8_t value) {
 #endif // TLC5940_INLINE_SETDC_FUNCS
-  channel = numChannels - 1 - channel;
+  channel = TLC5940_CHANNELS_N - 1 - channel;
   channel_t i = (channel3_t)channel * 3 / 4;
 #if (TLC5940_ENABLE_MULTIPLEXING == 0)
   uint8_t *pBack = &gsData[0];
@@ -345,7 +346,7 @@ static        void TLC5940_SetAllDC(uint8_t value) {
     *(pBack + i++) = tmp1;              // bits: 05 04 03 02 01 00 05 04
     *(pBack + i++) = tmp2;              // bits: 03 02 01 00 05 04 03 02
     *(pBack + i++) = tmp3;              // bits: 01 00 05 04 03 02 01 00
-  } while (i < dcDataSize);
+  } while (i < TLC5940_DOT_CORRECTION_BYTES);
 }
 
 #if (TLC5940_INCLUDE_SET4_FUNCS)
@@ -359,7 +360,7 @@ static inline void TLC5940_Set4DC(channel_t channel, uint8_t value) {
 static        void TLC5940_Set4DC(channel_t channel, uint8_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_Set4DC(channel_t channel, uint8_t value) {
 #endif // TLC5940_INLINE_SETDC_FUNCS
-  channel = numChannels - 1 - (channel * 4) - 3;
+  channel = TLC5940_CHANNELS_N - 1 - (channel * 4) - 3;
   channel_t i = (channel3_t)channel * 3 / 4;
 #if (TLC5940_ENABLE_MULTIPLEXING == 0)
   uint8_t *pBack = &gsData[0];
@@ -388,7 +389,7 @@ static inline void TLC5940_ClockInDC(void) {
 #if (TLC5940_ENABLE_MULTIPLEXING == 0)
   uint8_t *pBack = &gsData[0];
 #endif // TLC5940_ENABLE_MULTIPLEXING
-  for (dcData_t i = 0; i < dcDataSize; i++)
+  for (dcData_t i = 0; i < TLC5940_DOT_CORRECTION_BYTES; i++)
     TLC5940_TX(*(pBack + i));
 
 #if (TLC5940_SPI_MODE == 1)
@@ -407,8 +408,8 @@ static inline void TLC5940_SetGS(uint8_t row, channel_t channel, uint16_t value)
 static        void TLC5940_SetGS(uint8_t row, channel_t channel, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_SetGS(uint8_t row, channel_t channel, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
-  channel = numChannels - 1 - channel;
-  uint16_t offset = (uint16_t)((channel3_t)channel * 3 / 2) + (gsOffset_t)gsDataSize * row;
+  channel = TLC5940_CHANNELS_N - 1 - channel;
+  uint16_t offset = (uint16_t)((channel3_t)channel * 3 / 2) + (gsOffset_t)TLC5940_GRAYSCALE_BYTES * row;
 
   switch (channel % 2) {
   case 0:
@@ -429,7 +430,7 @@ static inline void TLC5940_SetGS(channel_t channel, uint16_t value) {
 static        void TLC5940_SetGS(channel_t channel, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_SetGS(channel_t channel, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
-  channel = numChannels - 1 - channel;
+  channel = TLC5940_CHANNELS_N - 1 - channel;
   channel3_t i = (channel3_t)channel * 3 / 2;
 
   switch (channel % 2) {
@@ -456,8 +457,8 @@ static        void TLC5940_SetAllGS(uint8_t row, uint16_t value) {
   uint8_t tmp1 = (value >> 4);
   uint8_t tmp2 = (uint8_t)(value << 4) | (tmp1 >> 4);
 
-  gsOffset_t offset = (gsOffset_t)gsDataSize * row;
-  gsData_t i = gsDataSize / 3 + 1;
+  gsOffset_t offset = (gsOffset_t)TLC5940_GRAYSCALE_BYTES * row;
+  gsData_t i = TLC5940_GRAYSCALE_BYTES / 3 + 1;
   while (--i) {
     *(pBack + offset++) = tmp1;              // bits: 11 10 09 08 07 06 05 04
     *(pBack + offset++) = tmp2;              // bits: 03 02 01 00 11 10 09 08
@@ -480,7 +481,7 @@ static        void TLC5940_SetAllGS(uint16_t value) {
     gsData[i++] = tmp1;              // bits: 11 10 09 08 07 06 05 04
     gsData[i++] = tmp2;              // bits: 03 02 01 00 11 10 09 08
     gsData[i++] = (uint8_t)value;    // bits: 07 06 05 04 03 02 01 00
-  } while (i < gsDataSize);
+  } while (i < TLC5940_GRAYSCALE_BYTES);
 }
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
@@ -496,8 +497,8 @@ static inline void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value
 static        void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_Set4GS(uint8_t row, channel_t channel, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
-  channel = numChannels - 1 - (channel * 4) - 3;
-  uint16_t offset = (uint16_t)((channel3_t)channel * 3 / 2) + (gsOffset_t)gsDataSize * row;
+  channel = TLC5940_CHANNELS_N - 1 - (channel * 4) - 3;
+  uint16_t offset = (uint16_t)((channel3_t)channel * 3 / 2) + (gsOffset_t)TLC5940_GRAYSCALE_BYTES * row;
 
   uint8_t tmp1 = (value >> 4);
   uint8_t tmp2 = (uint8_t)(value << 4) | (tmp1 >> 4);
@@ -517,7 +518,7 @@ static inline void TLC5940_Set4GS(channel_t channel, uint16_t value) {
 static        void TLC5940_Set4GS(channel_t channel, uint16_t value) __attribute__(( noinline, unused ));
 static        void TLC5940_Set4GS(channel_t channel, uint16_t value) {
 #endif // TLC5940_INLINE_SETGS_FUNCS
-  channel = numChannels - 1 - (channel * 4) - 3;
+  channel = TLC5940_CHANNELS_N - 1 - (channel * 4) - 3;
   channel3_t i = (channel3_t)channel * 3 / 2;
 
   uint8_t tmp1 = (value >> 4);

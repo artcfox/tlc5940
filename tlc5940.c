@@ -37,8 +37,8 @@
 
 #if (TLC5940_ENABLE_MULTIPLEXING)
 
-uint8_t gsData[TLC5940_MULTIPLEX_N][gsDataSize];
-static uint8_t gsDataCache[TLC5940_MULTIPLEX_N][gsDataSize];
+uint8_t gsData[TLC5940_MULTIPLEX_N][TLC5940_GRAYSCALE_BYTES];
+static uint8_t gsDataCache[TLC5940_MULTIPLEX_N][TLC5940_GRAYSCALE_BYTES];
 uint8_t *pBack;
 
 // If the pins we are multiplexing across come from the same PORT as XLAT,
@@ -121,7 +121,7 @@ const uint8_t toggleRows[2 * TLC5940_MULTIPLEX_N] = {
 #endif // TLC5940_MULTIPLEX_N
 }; // const toggleRows[2 * TLC5940_MULTIPLEX_N]
 #else // TLC5940_ENABLE_MULTIPLEXING
-uint8_t gsData[gsDataSize];
+uint8_t gsData[TLC5940_GRAYSCALE_BYTES];
 #endif // TLC5940_ENABLE_MULTIPLEXING
 
 #if (TLC5940_USE_GPIOR0 == 0)
@@ -392,7 +392,7 @@ void TLC5940_ClockInGS(void) {
   // displayed, and then we will clock in all zeroes to prevent that
   // garbage from ever being displayed.
 
-  for (gsData_t i = 0; i < gsDataSize; i++)
+  for (gsData_t i = 0; i < TLC5940_GRAYSCALE_BYTES; i++)
     TLC5940_TX(0x00); // clock in zeroes, since this data will be latched now
 
 #if (TLC5940_SPI_MODE == 1)
@@ -456,7 +456,7 @@ void TLC5940_ClockInGS(void) {
   MULTIPLEX_INPUT = toggleRows[TLC5940_MULTIPLEX_N] & ~(TLC5940_TR_EXTRAS);
 
   // Shift in more zeroes, since the first thing the ISR does is pulse XLAT
-  for (gsData_t i = 0; i < gsDataSize; i++)
+  for (gsData_t i = 0; i < TLC5940_GRAYSCALE_BYTES; i++)
     TLC5940_TX(0x00);
 
 #if (TLC5940_SPI_MODE == 1)
@@ -503,9 +503,9 @@ ISR(TLC5940_TIMER_COMPA_vect) {
     __asm__ volatile ("" ::: "memory"); // ensure pBack gets re-read
   }
 
-  gsOffset_t offset = (gsOffset_t)gsDataSize * TLC5940_row;
-  gsData_t i = gsDataSize + 1;
-  while (--i) // loop over gsData[row][i] or gsDataCache[row][i]
+  gsOffset_t offset = (gsOffset_t)TLC5940_GRAYSCALE_BYTES * TLC5940_row;
+  gsData_t i = TLC5940_GRAYSCALE_BYTES + 1;
+  while (--i) // loop over gsData[TLC5940_row][i] or gsDataCache[TLC5940_row][i]
     TLC5940_TX(*(pFront + offset++));
 
   // Advance the row in the most efficient way
@@ -531,7 +531,7 @@ ISR(TLC5940_TIMER_COMPA_vect) {
   // We now have (TLC5940_CTC_TOP + 1) * 64 clocks to send data for next cycle
 
   if (TLC5940_GetGSUpdateFlag()) {
-    for (gsData_t i = 0; i < gsDataSize; i++)
+    for (gsData_t i = 0; i < TLC5940_GRAYSCALE_BYTES; i++)
       TLC5940_TX(gsData[i]);
     TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag(); // optimized
   }
