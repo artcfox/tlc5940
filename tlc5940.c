@@ -367,7 +367,7 @@ void TLC5940_Init(void) {
   OCR2A = TLC5940_CTC_TOP;
   // Enable Timer/Counter2 Compare Match A interrupt
   TIMSK2 |= (1 << OCIE2A);
-#else
+#else // TLC5940_ISR_CTC_TIMER
 #error "TLC5940_ISR_CTC_TIMER must be 0 or 2"
 #endif // TLC5940_ISR_CTC_TIMER
 }
