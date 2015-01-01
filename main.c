@@ -16,8 +16,9 @@ int main(void) {
   TLC5940_ClockInGS();
 
   // Enable Global Interrupts
-  TCNT0 = 0;
   sei();
+
+  //TCNT0 = 0;
 
   for (;;) {
     for (channel_t i = 0; i < numChannels; ++i) {

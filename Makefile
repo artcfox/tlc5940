@@ -61,30 +61,16 @@ FUSES      = -U hfuse:w:0xdf:m -U lfuse:w:0x22:m
 
 # ---------- End DEVICE Configuration Section ----------
 
-include tlc5940.mk
+include tlc5940-attiny85.mk
 
 # ---------- Begin App Configuration Section ----------
-
-# GPIOR0 is used to store flags. This special-purpose register is
-# designed to store bit flags, as it can set, clear or test a single
-# bit in only 2 clock cycles.
-#
-# Note: You must make sure that the flag bits assigned below do not
-#       conflict with any other GPIOR0 flag bits your application
-#       might use, or are defined elsewhere in this Makefile.
-
-# GPIOR0 flag bits used
-APP_FLAG_SYNC = 3
-
-APP_DEFINES = -DAPP_FLAGS=GPIOR0 \
-	      -DAPP_FLAG_SYNC=$(APP_FLAG_SYNC)
 
 # ---------- End App Configuration Section ----------
 
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE    = avrdude $(PROGRAMMER) -p $(DEVICE)
-COMPILE    = avr-gcc -std=gnu99 -Wall -Wextra -Werror -Winline -mint8 -D__DELAY_BACKWARD_COMPATIBLE__ -O3 -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) $(APP_DEFINES) $(TLC5940_DEFINES)
+COMPILE    = avr-gcc -std=gnu99 -Wall -Wextra -Werror -Winline -mint8 -D__DELAY_BACKWARD_COMPATIBLE__ -O3 -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) $(TLC5940_DEFINES)
 #COMPILE    = avr-gcc -std=gnu99 -Wall -Wextra -Werror -Winline -O3 -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) $(APP_DEFINES)
 
 LINK_FLAGS = -lc -lm
