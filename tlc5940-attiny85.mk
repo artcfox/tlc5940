@@ -448,6 +448,13 @@ ifeq ($(TLC5940_PB2_UNMAPPED), 1)
 TLC5940_PB2_UNMAPPED_DEFINE = -DTLC5940_PB2_UNMAPPED=$(TLC5940_PB2_UNMAPPED)
 endif
 
+# Feel free to delete these backwards compatible variable mappings after
+# you have updated your application to use the new names.
+BACKWARDS_COMPATIBLE_DEFINES = \
+-DgsDataSize=TLC5940_GRAYSCALE_BYTES \
+-DnumChannels=TLC5940_CHANNELS_N \
+-DdcDataSize=TLC5940_DOT_CORRECTION_BYTES
+
 # This line integrates all options into a single flag called:
 #     $(TLC5940_DEFINES)
 # which should be appended to the definition of COMPILE in the Makefile
@@ -477,5 +484,5 @@ TLC5940_DEFINES = -DTLC5940_N=$(TLC5940_N) \
                   -DXLAT_PIN=$(XLAT_PIN) \
                   -DBLANK_AND_XLAT_SHARE_PORT=$(BLANK_AND_XLAT_SHARE_PORT) \
                   -DTLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER=$(TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER) \
-                  $(TLC5940_PB2_UNMAPPED_DEFINE)
-
+                  $(TLC5940_PB2_UNMAPPED_DEFINE) \
+                  $(BACKWARDS_COMPATIBLE_DEFINES)
