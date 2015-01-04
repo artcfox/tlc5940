@@ -518,11 +518,15 @@ ISR(TLC5940_TIMER_COMPA_vect) {
 
 #else // TLC5940_ENABLE_MULTIPLEXING
 
+  // The following if/else block has been carefully structured to
+  // always complete in the same number of clock cycles regardless of
+  // whether the branch is taken or not. This ensures that BLANK gets
+  // pulsed exactly (TLC5940_CTC_TOP + 1) * 64 clock cycles apart.
   if (TLC5940_GetXLATNeedsPulseFlag()) {
-    TLC5940_ToggleBLANK_XLAT();
+    TLC5940_ClearXLATNeedsPulseFlag(); // this statement must come first
+    TLC5940_ToggleBLANK_XLAT(); // high
     TLC5940_RespectSetupAndHoldTimes();
-    TLC5940_ToggleXLAT_BLANK();
-    TLC5940_ClearXLATNeedsPulseFlag();
+    TLC5940_ToggleXLAT_BLANK(); // low
   } else {
     togglePin(BLANK_INPUT, BLANK_PIN); // high
     TLC5940_RespectSetupAndHoldTimes();
