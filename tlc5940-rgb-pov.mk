@@ -3,41 +3,62 @@
 # Defines the number of TLC5940 chips that are connected in series
 TLC5940_N = 4
 
+# Flag for whether the VPRG and DCPRG pins on the TLC5940 are
+# hardwired to GND. This uses two fewer pins on the AVR, but the dot
+# correction values will always (and can only!) be read from the
+# TLC5940's EEPROM.
+#  0 = The VPRG and DCPRG pins on the TLC5940 are not hardwired to
+#      GND, and are connected to two pins of the AVR that are defined
+#      later in this makefile. By default the dot correction values will
+#      be read from the TLC5940's EEPROM, but this setting allows the
+#      AVR to override the EEPROM defaults during initialization using
+#      the Set*DC family of functions followed by a call to ClockInDC.
+#  1 = The VPRG and DCPRG inputs on the TLC5940 are both hardwired to
+#      GND (disabling programmable dot correction mode), and forces the
+#      dot correction values to be read in from the TLC5940's EEPROM.
+#
+# WARNING: Do not change this option without also changing how the
+#          physical hardware is wired!
+TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 0
+
+# TLC5940_DCPRG_HARDWIRED_TO_VCC is only defined if:
+#     TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 0
+# Flag for whether the DCPRG pin on the TLC5940 is hardwired to VCC.
+# This uses one fewer pin on the AVR, but the dot correction values
+# will always need to (and can only!) be set manually using the
+# Set*DC family of functions, followed by a call to the ClockInDC
+#  0 = The VPRG pin on the TLC5940 is not hardwired to VCC, and is
+#      connected to a pin on the AVR that is defined later in this
+#      makefile. By default the dot correction values will be read
+#      from the TLC5940's EEPROM, but this setting allows the AVR to
+#      override the EEPROM defaults during initialization using the
+#      Set*DC family of functions followed by a call to ClockInDC.
+#  1 = The DCPRG input on the TLC5940 is hardwired to VCC (disabling
+#      reading them from the TLC5940's EEPROM), and requires the dot
+#      correction values to be programmed manually by the AVR.
+#
+# Note: If you are using this TLC5940 library to drive a TLC5944
+#       (which does not have a DCPRG pin), you should also set this
+#       flag to 1.
+#
+# WARNING: Do not change this option without also changing how the
+#          physical hardware is wired!
+ifeq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 0)
+TLC5940_DCPRG_HARDWIRED_TO_VCC = 1
+endif
+
 # Flag for including functions for manually setting the dot correction
 #  0 = Do not include dot correction features (generates smaller code)
 #  1 = Include dot correction features (will still read from EEPROM by
 #      default)
+#
+# Note: If TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 1, that will force
+#       this setting to 0, since there would be no way to
+#       programmatically set the dot correction data. Conversely,
+#       if TLC5940_DCPRG_HARDWIRED_TO_VCC = 1, that will force this
+#       setting to 1, since there would be no way for the TLC5940 to
+#       read dot correction values from its EEPROM.
 TLC5940_INCLUDE_DC_FUNCS = 1
-
-# TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND is only defined if
-# TLC5940_INCLUDE_DC_FUNCS = 0
-# Flag for whether the VPRG and DCPRG pins on the TLC5940 are
-# hardwired to GND (uses two less pins, but dot correction values will
-# always be read from EEPROM).
-#  0 = The VPRG and DCPRG pins must be defined on the AVR and
-#      connected to the corresponding pins on the TLC5940.
-#  1 = The VPRG and DCPRG inputs on the TLC5940 must be hardwired to
-#      GND, and TLC5940_INCLUDE_DC_FUNCS must be set to 0 (disables
-#      dot correction mode).
-#
-# WARNING: Before you enable this option, you must wire the chip up
-#          differently!
-ifeq ($(TLC5940_INCLUDE_DC_FUNCS), 0)
-TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 0
-endif
-
-# TLC5940_DCPRG_HARDWIRED_TO_VCC is only defined if
-# TLC5940_INCLUDE_DC_FUNCS = 1
-# Flag for whether the DCPRG pin on the TLC5940 is hardwired to VCC
-# (uses one less pin, but dot correction values will always need to be
-# sent manually using the TLC5940_Set*DC family of functions). Also
-# useful for driving a TLC5944, which does not have a DCPRG pin.
-#
-# WARNING: Before you enable this option, you must wire the chip up
-#          differently!
-ifeq ($(TLC5940_INCLUDE_DC_FUNCS), 1)
-TLC5940_DCPRG_HARDWIRED_TO_VCC = 1
-endif
 
 # Flag for including efficient functions for setting the grayscale
 # (and optionally dot correction) values of four channels at once.
@@ -108,7 +129,8 @@ TLC5940_INLINE_SETGS_FUNCS = 1
 #      operate on.
 TLC5940_ENABLE_MULTIPLEXING = 1
 
-# TLC5940_MULTIPLEX_N is only defined if TLC5940_ENABLE_MULTIPLEXING = 1
+# TLC5940_MULTIPLEX_N is only defined if:
+#     TLC5940_ENABLE_MULTIPLEXING = 1
 ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
 # Defines the number of rows to be multiplexed
 #
@@ -118,8 +140,8 @@ ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
 #       TLC5940_ENABLE_MULTIPLEXING = 0
 TLC5940_MULTIPLEX_N = 3
 
-# TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER is only defined if
-# TLC5940_ENABLE_MULTIPLEXING = 1
+# TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER is only defined if:
+#     TLC5940_ENABLE_MULTIPLEXING = 1
 # When multiplexing, you don't actually need to run a separate wire to
 # the BLANK pin of the TLC5940, as long as you connect its BLANK and
 # XLAT pins together. The multiplexing MOSFETs will keep the LEDs off
@@ -237,7 +259,8 @@ ifeq ($(TLC5940_ENABLE_MULTIPLEXING), 1)
 TLC5940_USE_GPIOR1 = 1
 endif
 
-# GPIOR0 flag bits are only defined if TLC5940_USE_GPIOR0 = 1
+# GPIOR0 flag bits are only defined if:
+#     TLC5940_USE_GPIOR0 = 1
 ifeq ($(TLC5940_USE_GPIOR0), 1)
 TLC5940_FLAG_GS_UPDATE = 0
 
@@ -281,7 +304,8 @@ XLAT_PORT = PORTC
 XLAT_INPUT = PINC
 XLAT_PIN = PC3
 
-# VPRG and DCPRG are only defined if TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 0
+# VPRG and DCPRG are only defined if:
+#     TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 0
 ifneq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 1)
 # DCPRG is only defined if TLC5940_DCPRG_HARDWIRED_TO_VCC = 0
 ifneq ($(TLC5940_DCPRG_HARDWIRED_TO_VCC), 1)
@@ -325,6 +349,15 @@ ROW5_PIN = PC5
 ROW6_PIN =
 ROW7_PIN =
 endif
+
+# Feel free to delete each backwards compatible variable mapping after
+# you have updated your application to use its new name. After you have
+# updated (and deleted) every variable mapping, then you should also
+# delete the BACKWARDS_COMPATIBLE_DEFINES variable itself below.
+BACKWARDS_COMPATIBLE_DEFINES = \
+-DgsDataSize=TLC5940_GRAYSCALE_BYTES \
+-DnumChannels=TLC5940_CHANNELS_N \
+-DdcDataSize=TLC5940_DOT_CORRECTION_BYTES
 
 # ---------- End TLC5940 Configuration Section ----------
 
@@ -444,16 +477,50 @@ endif
 endif
 endif
 
+ifeq ($(TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND), 1)
+ifeq ($(TLC5940_INCLUDE_DC_FUNCS), 1)
+$(warning @@@@@@@@@@@@@@@@@@@ TLC5940_INCLUDE_DC_FUNCS WARNING @@@@@@@@@@@@@@@@@@@@)
+$(warning @ Your configuration of TLC5940_INCLUDE_DC_FUNCS = 1 has been overridden)
+$(warning @ and will be changed to TLC5940_INCLUDE_DC_FUNCS = 0, because you)
+$(warning @ indicated that VPRG and DCPRG are hardwired to GND by setting)
+$(warning @ TLC5940_VPRG_DCPRG_HARDWIRED_TO_GND = 1)
+$(warning @)
+$(warning @ With the hardware configured this way, it is impossible for the TLC5940)
+$(warning @ to receive dot correction data, and so it must use the values stored in)
+$(warning @ its EEPROM.)
+$(warning @)
+$(warning @ To prevent this warning from being displayed, you should explicitly set)
+$(warning @ TLC5940_INCLUDE_DC_FUNCS = 0)
+$(warning @@@@@@@@@@@@@@@@@@@ TLC5940_INCLUDE_DC_FUNCS WARNING @@@@@@@@@@@@@@@@@@@@)
+TLC5940_INCLUDE_DC_FUNCS = 0
+endif
+endif
+
+ifeq ($(TLC5940_DCPRG_HARDWIRED_TO_VCC), 1)
+ifeq ($(TLC5940_INCLUDE_DC_FUNCS), 0)
+$(warning @@@@@@@@@@@@@@@@@@@ TLC5940_INCLUDE_DC_FUNCS WARNING @@@@@@@@@@@@@@@@@@@@)
+$(warning @ Your configuration of TLC5940_INCLUDE_DC_FUNCS = 0 has been overridden)
+$(warning @ and will be changed to TLC5940_INCLUDE_DC_FUNCS = 1, because you)
+$(warning @ indicated that DCPRG is hardwired to VCC by setting)
+$(warning @ TLC5940_DCPRG_HARDWIRED_TO_VCC = 1)
+$(warning @)
+$(warning @ With the hardware configured this way, it is impossible for the TLC5940)
+$(warning @ to use the dot correction data stored in its EEPROM, and so dot)
+$(warning @ correction values must be sent from the AVR to the TLC5940 after)
+$(warning @ initialization using the Set*DC family of functions followed by a call)
+$(warning @ to ClockInDC. In order to do that, those functions must not only be)
+$(warning @ included, but also called by your application.)
+$(warning @)
+$(warning @ To prevent this warning from being displayed, you should explicitly set)
+$(warning @ TLC5940_INCLUDE_DC_FUNCS = 1, and be sure to call those functions.)
+$(warning @@@@@@@@@@@@@@@@@@@ TLC5940_INCLUDE_DC_FUNCS WARNING @@@@@@@@@@@@@@@@@@@@)
+TLC5940_INCLUDE_DC_FUNCS = 1
+endif
+endif
+
 ifeq ($(TLC5940_PB2_UNMAPPED), 1)
 TLC5940_PB2_UNMAPPED_DEFINE = -DTLC5940_PB2_UNMAPPED=$(TLC5940_PB2_UNMAPPED)
 endif
-
-# Feel free to delete these backwards compatible variable mappings after
-# you have updated your application to use the new names.
-BACKWARDS_COMPATIBLE_DEFINES = \
--DgsDataSize=TLC5940_GRAYSCALE_BYTES \
--DnumChannels=TLC5940_CHANNELS_N \
--DdcDataSize=TLC5940_DOT_CORRECTION_BYTES
 
 # This line integrates all options into a single flag called:
 #     $(TLC5940_DEFINES)
