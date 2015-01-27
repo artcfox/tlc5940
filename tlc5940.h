@@ -2,7 +2,7 @@
 
   tlc5940.h
 
-  Copyright 2010-2014 Matthew T. Pandina. All rights reserved.
+  Copyright 2010-2015 Matthew T. Pandina. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -211,19 +211,19 @@ static inline void TLC5940_SetXLATNeedsPulseFlagAndClearGSUpdateFlag(void) {
 // TLC5940_ToggleBLANK_XLAT should never be called from user code, except when implementing a non-default ISR
 static inline void TLC5940_ToggleBLANK_XLAT(void) __attribute__(( always_inline ));
 static inline void TLC5940_ToggleBLANK_XLAT(void) {
-#if (BLANK_AND_XLAT_SHARE_PORT == 0 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+#if (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 0 && TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
   togglePin(BLANK_INPUT, BLANK_PIN); // high
   togglePin(XLAT_INPUT, XLAT_PIN); // high
-#elif (BLANK_AND_XLAT_SHARE_PORT == 0 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+#elif (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 0 && TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
   togglePin(BLANK_INPUT, BLANK_PIN); // high
   // The toggling of XLAT is embedded in the const definition of toggleRows
-#elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+#elif (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 1 && TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
 #if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 1)
   XLAT_INPUT = (1 << XLAT_PIN); // set shared XLAT/BLANK pin high
 #else // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
   BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // both high at once
 #endif // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
-#elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+#elif (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 1 && TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
   // The toggling of BLANK is embedded in the const definition of toggleRows
   // The toggling of XLAT is embedded in the const definition of toggleRows
 #endif
@@ -232,19 +232,19 @@ static inline void TLC5940_ToggleBLANK_XLAT(void) {
 // TLC5940_ToggleXLAT_BLANK should never be called from user code, except when implementing a non-default ISR
 static inline void TLC5940_ToggleXLAT_BLANK(void) __attribute__(( always_inline ));
 static inline void TLC5940_ToggleXLAT_BLANK(void) {
-#if (BLANK_AND_XLAT_SHARE_PORT == 0 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+#if (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 0 && TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
   togglePin(XLAT_INPUT, XLAT_PIN); // low
   togglePin(BLANK_INPUT, BLANK_PIN); // low
-#elif (BLANK_AND_XLAT_SHARE_PORT == 0 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+#elif (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 0 && TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
   // The toggling of XLAT is embedded in the const definition of toggleRows
   togglePin(BLANK_INPUT, BLANK_PIN); // low
-#elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
+#elif (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 1 && TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 0)
 #if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 1)
   XLAT_INPUT = (1 << XLAT_PIN); // set shared XLAT/BLANK pin low
 #else // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
   BLANK_INPUT = (1 << BLANK_PIN) | (1 << XLAT_PIN); // both low at once
 #endif // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
-#elif (BLANK_AND_XLAT_SHARE_PORT == 1 && MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+#elif (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 1 && TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
   // The toggling of XLAT is embedded in the const definition of toggleRows
   // The toggling of BLANK is embedded in the const definition of toggleRows
 #endif
@@ -253,9 +253,9 @@ static inline void TLC5940_ToggleXLAT_BLANK(void) {
 static inline void TLC5940_RespectSetupAndHoldTimes(void) __attribute(( always_inline ));
 static inline void TLC5940_RespectSetupAndHoldTimes(void) {
   // The code is now so optimized that we could violate some of the hold times in the datasheet
-#if (MULTIPLEX_AND_XLAT_SHARE_PORT == 1 || TLC5940_ENABLE_MULTIPLEXING == 0)
+#if (TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 1 || TLC5940_ENABLE_MULTIPLEXING == 0)
   __asm__ volatile ("nop\n\t" ::);
-#endif // MULTIPLEX_AND_XLAT_SHARE_PORT
+#endif // TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT
 }
 
 // Define a macro for SPI Transmit

@@ -2,7 +2,7 @@
 
   tlc5940.c
 
-  Copyright 2010-2014 Matthew T. Pandina. All rights reserved.
+  Copyright 2010-2015 Matthew T. Pandina. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -48,19 +48,19 @@ uint8_t *pBack;
 // clock cycle as well. If BLANK is hardwired to XLAT, then we only need
 // to toggle XLAT. We also need to be careful not to violate the setup
 // and hold times as described in the datasheet.
-#if (MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
-#if (BLANK_AND_XLAT_SHARE_PORT == 1)
+#if (TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT == 1)
+#if (TLC5940_BLANK_AND_XLAT_SHARE_PORT == 1)
 #if (TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER == 1)
 #define TLC5940_TR_EXTRAS (1 << XLAT_PIN)
 #else // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
 #define TLC5940_TR_EXTRAS ((1 << BLANK_PIN) | (1 << XLAT_PIN))
 #endif // TLC5940_XLAT_AND_BLANK_HARDWIRED_TOGETHER
-#else // BLANK_AND_XLAT_SHARE_PORT
+#else // TLC5940_BLANK_AND_XLAT_SHARE_PORT
 #define TLC5940_TR_EXTRAS (1 << XLAT_PIN)
-#endif // BLANK_AND_XLAT_SHARE_PORT
-#else // MULTIPLEX_AND_XLAT_SHARE_PORT
+#endif // TLC5940_BLANK_AND_XLAT_SHARE_PORT
+#else // TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT
 #define TLC5940_TR_EXTRAS 0
-#endif // MULTIPLEX_AND_XLAT_SHARE_PORT
+#endif // TLC5940_MULTIPLEX_AND_XLAT_SHARE_PORT
 
 // The toggleRows array is now automatically populated, and we start
 // multiplexing on the second to last row so the ISR doesn't need to
