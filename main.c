@@ -125,7 +125,7 @@ int main(void) {
       TLC5940_SetGSUpdateFlag();
 
       // Delay for a bit, so we can actually see what is happening
-      _delay_ms(10);
+      _delay_ms(25);
     }
 
     // Loop backward over all output channels, skipping the last and first
@@ -144,7 +144,7 @@ int main(void) {
       TLC5940_SetGSUpdateFlag();
 
       // Delay for a bit, so we can actually see what is happening
-      _delay_ms(10);
+      _delay_ms(25);
     }
   }
 
