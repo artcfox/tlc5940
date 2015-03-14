@@ -1,0 +1,9 @@
+*~
+*.o
+*.elf
+*.hex
+schematics/*.ps
+schematics/*.eps
+schematics/*.aux
+schematics/*.log
+schematics/*eps-converted-to.pdf
